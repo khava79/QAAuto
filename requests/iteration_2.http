@@ -1,0 +1,351 @@
+### =========================
+### SETUP
+### =========================
+
+### Admin token
+### Authorization: Basic YWRtaW46YWRtaW4=
+
+### User token kate19989
+### Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+### Step 1: Create new user by admin
+### Expected result: 201 Created
+POST http://localhost:4111/api/v1/admin/users
+Content-Type: application/json
+Authorization: Basic YWRtaW46YWRtaW4=
+
+{
+  "username": "kate19989",
+  "password": "verysTRongPassword33$8",
+  "role": "USER"
+}
+
+### Step 2: Login as new user
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "kate19989",
+  "password": "verysTRongPassword33$8"
+}
+
+### Step 3: Create first account
+### Expected result: 201 Created or 200 OK
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+### Step 4: Create second account
+### Expected result: 201 Created or 200 OK
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+### Step 5: Get user accounts
+### Expected result: 200 OK
+GET http://localhost:4111/api/v1/customer/accounts
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+
+### =========================
+### DEPOSIT TESTS
+### =========================
+
+### Positive test: User can deposit valid amount
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 100
+}
+
+### Negative test: User cannot deposit zero amount
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 0
+}
+
+### Negative test: User cannot deposit negative amount
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": -100
+}
+
+### Negative test: User cannot deposit more than 5000
+### Expected result: 400 Bad Request
+### Actual result: 200 OK
+### BUG: API allows deposit amount 5001
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 5001
+}
+
+### Negative test: User cannot deposit to non-existing account
+### Expected result: 404 Not Found
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 999999,
+  "balance": 100
+}
+
+### =========================
+### CROSS-USER SETUP
+### =========================
+
+
+### Setup: Create second user by admin
+### Expected result: 201 Created
+POST http://localhost:4111/api/v1/admin/users
+Content-Type: application/json
+Authorization: Basic YWRtaW46YWRtaW4=
+
+{
+  "username": "alex19989",
+  "password": "StrongPassword33$8",
+  "role": "USER"
+}
+
+### Setup: Login as second user
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "alex19989",
+  "password": "StrongPassword33$8"
+}
+
+### Setup: Create account for second user
+### Expected result: 201 Created or 200 OK
+POST http://localhost:4111/api/v1/accounts
+Content-Type: application/json
+Authorization: Basic YWxleDE5OTg5OlN0cm9uZ1Bhc3N3b3JkMzMkOA==
+
+### Setup: Get second user accounts
+### Expected result: 200 OK
+GET http://localhost:4111/api/v1/customer/accounts
+Content-Type: application/json
+Authorization: Basic YWxleDE5OTg5OlN0cm9uZ1Bhc3N3b3JkMzMkOA==
+
+### =========================
+### CROSS-USER ACCESS TESTS
+### =========================
+
+### Negative test: User cannot deposit to another user's account
+### Expected result: 403 Forbidden
+
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 5,
+  "balance": 100
+}
+
+### Positive test: User can transfer money to another user's account
+### Expected result: 200 OK
+
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 5,
+  "amount": 100
+}
+
+### Negative test: User cannot transfer money from another user's account
+### Expected result: 403 Forbidden
+
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 5,
+  "receiverAccountId": 3,
+  "amount": 100
+}
+
+
+### =========================
+### TRANSFER TESTS
+### =========================
+
+
+### Negative test: User cannot transfer zero amount
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 0
+}
+
+### Negative test: User cannot transfer negative amount
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": -100
+}
+
+### Negative test: User cannot transfer more than 10000
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 10001
+}
+
+### Negative test: User cannot transfer more than balance
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 999999
+}
+
+### Positive test: User can transfer money between own accounts
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 100
+}
+
+### Negative test: User cannot transfer to non-existing account
+### Expected result: 404 Not Found
+
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 999999,
+  "amount": 100
+}
+
+### Negative test: User cannot transfer from non-existing account
+### Expected result: 404 Not Found
+
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 999999,
+  "receiverAccountId": 4,
+  "amount": 100
+}
+
+### =========================
+### PROFILE NAME TESTS
+### =========================
+
+### Positive test: User can update profile name
+### Expected result: 200 OK
+
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "name": "Eddie Davidson"
+}
+
+### Negative test: User cannot update profile name with one word
+### Expected result: 400 Bad Request
+### Actual result: 200 OK
+### BUG: API allows profile name with one word
+
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "name": "Eddie"
+}
+
+### Negative test: User cannot update profile name with numbers
+### Expected result: 400 Bad Request
+### Actual result: 200 OK
+### BUG: API allows numbers in profile name
+
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "name": "Eddie786 Davidson"
+}
+
+### Negative test: User cannot update profile name with special characters
+### Expected result: 400 Bad Request
+### Actual result: 200 OK
+### BUG: API allows special characters in profile name
+
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "name": "Eddie @Davidson"
+}
+
+### Negative test: User cannot update profile name with empty value
+### Expected result: 400 Bad Request
+### Actual result: 200 OK
+### BUG: API allows empty profile name
+
+PUT http://localhost:4111/api/v1/customer/profile
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "name": ""
+}
