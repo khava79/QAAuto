@@ -1,0 +1,27 @@
+package requests;
+
+import io.restassured.response.ValidatableResponse;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import models.ProfileNameRequest;
+
+import static io.restassured.RestAssured.given;
+
+public class ProfileNameRequester extends Request<ProfileNameRequest> {
+
+    public ProfileNameRequester(RequestSpecification requestSpecification,
+                                ResponseSpecification responseSpecification) {
+        super(requestSpecification, responseSpecification);
+    }
+
+    @Override
+    public ValidatableResponse put(ProfileNameRequest model) {
+        return given()
+                .spec(requestSpecification)
+                .body(model)
+                .put("/api/v1/customer/profile")
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+}

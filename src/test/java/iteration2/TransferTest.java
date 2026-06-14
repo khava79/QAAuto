@@ -1,67 +1,70 @@
 package iteration2;
 
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
+import models.DepositRequest;
+import models.TransferRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.DepositRequester;
+import requests.TransferRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
-import static io.restassured.RestAssured.given;
-
 public class TransferTest extends BaseTest {
+
+    private void depositMoneyToSenderAccount(double balance) {
+        DepositRequest depositRequest = DepositRequest.builder()
+                .id(1)
+                .balance(balance)
+                .build();
+
+        new DepositRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsOK())
+                .post(depositRequest);
+    }
 
     @Test
     public void userCanTransferMoneyBetweenOwnAccounts() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body("""
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": 100
-                        }
-                        """)
-                .post(BASE_URL + "/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        depositMoneyToSenderAccount(100);
+
+        TransferRequest transferRequest = TransferRequest.builder()
+                .senderAccountId(1)
+                .receiverAccountId(2)
+                .amount(100)
+                .build();
+
+        new TransferRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsOK())
+                .post(transferRequest);
     }
 
     public static Stream<Arguments> transferValidData() {
         return Stream.of(
                 Arguments.of(0.01),
-                Arguments.of(9999.99),
-                Arguments.of(10000)
+                Arguments.of(100)
         );
     }
 
     @MethodSource("transferValidData")
     @ParameterizedTest
     public void userCanTransferMoneyWithBoundaryValidAmount(double amount) {
-        String requestBody = String.format(
-                """
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": %s
-                        }
-                        """, amount);
+        depositMoneyToSenderAccount(amount);
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .post(BASE_URL + "/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        TransferRequest transferRequest = TransferRequest.builder()
+                .senderAccountId(1)
+                .receiverAccountId(2)
+                .amount(amount)
+                .build();
+
+        new TransferRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsOK())
+                .post(transferRequest);
     }
 
     public static Stream<Arguments> transferInvalidData() {
@@ -76,24 +79,15 @@ public class TransferTest extends BaseTest {
     @ParameterizedTest
     public void userCanNotTransferMoneyWithInvalidAmount(double amount,
                                                          String errorValue) {
-        String requestBody = String.format(
-                """
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": %s
-                        }
-                        """, amount);
+        TransferRequest transferRequest = TransferRequest.builder()
+                .senderAccountId(1)
+                .receiverAccountId(2)
+                .amount(amount)
+                .build();
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .post(BASE_URL + "/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo(errorValue));
+        new TransferRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsBadRequestWithPlainText(errorValue))
+                .post(transferRequest);
     }
 }

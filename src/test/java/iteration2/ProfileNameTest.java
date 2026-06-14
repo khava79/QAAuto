@@ -1,36 +1,39 @@
 package iteration2;
 
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
+import models.ProfileNameRequest;
+import models.ProfileNameResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.ProfileNameRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
-
-import static io.restassured.RestAssured.given;
 
 public class ProfileNameTest extends BaseTest {
 
     @Test
     public void userCanUpdateProfileName() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body("""
-                        {
-                          "name": "Eddie Davidson"
-                        }
-                        """)
-                .put(BASE_URL + "/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("customer.name", Matchers.equalTo("Eddie Davidson"))
-                .body("message", Matchers.equalTo("Profile updated successfully"));
+
+        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
+                .name("Eddie Davidson")
+                .build();
+
+        ProfileNameResponse profileNameResponse =
+                new ProfileNameRequester(
+                        RequestSpecs.authAsUser("kate2026", "Password33$"),
+                        ResponseSpecs.requestReturnsOK())
+                        .put(profileNameRequest)
+                        .extract()
+                        .as(ProfileNameResponse.class);
+
+        softly.assertThat(profileNameRequest.getName())
+                .isEqualTo(profileNameResponse.getCustomer().getName());
+
+        softly.assertThat(profileNameResponse.getMessage())
+                .isEqualTo("Profile updated successfully");
     }
 
     public static Stream<Arguments> profileNameValidData() {
@@ -44,24 +47,24 @@ public class ProfileNameTest extends BaseTest {
     @MethodSource("profileNameValidData")
     @ParameterizedTest
     public void userCanUpdateProfileNameWithValidData(String name) {
-        String requestBody = String.format(
-                """
-                        {
-                          "name": "%s"
-                        }
-                        """, name);
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .put(BASE_URL + "/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("customer.name", Matchers.equalTo(name))
-                .body("message", Matchers.equalTo("Profile updated successfully"));
+        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
+                .name(name)
+                .build();
+
+        ProfileNameResponse profileNameResponse =
+                new ProfileNameRequester(
+                        RequestSpecs.authAsUser("kate2026", "Password33$"),
+                        ResponseSpecs.requestReturnsOK())
+                        .put(profileNameRequest)
+                        .extract()
+                        .as(ProfileNameResponse.class);
+
+        softly.assertThat(profileNameRequest.getName())
+                .isEqualTo(profileNameResponse.getCustomer().getName());
+
+        softly.assertThat(profileNameResponse.getMessage())
+                .isEqualTo("Profile updated successfully");
     }
 
     public static Stream<Arguments> profileNameInvalidData() {
@@ -76,21 +79,14 @@ public class ProfileNameTest extends BaseTest {
     @MethodSource("profileNameInvalidData")
     @ParameterizedTest
     public void userCanNotUpdateProfileNameWithInvalidData(String name) {
-        String requestBody = String.format(
-                """
-                        {
-                          "name": "%s"
-                        }
-                        """, name);
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .put(BASE_URL + "/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST);
+        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
+                .name(name)
+                .build();
+
+        new ProfileNameRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsBadRequest())
+                .put(profileNameRequest);
     }
 }
