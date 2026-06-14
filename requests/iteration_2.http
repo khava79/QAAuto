@@ -64,6 +64,39 @@ Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
   "balance": 100
 }
 
+### Positive test: User can deposit minimum amount
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 0.01
+}
+
+### Positive test: User can deposit amount just below max limit
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 4999.99
+}
+
+### Negative test: User cannot deposit amount just above max limit
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/deposit
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "id": 3,
+  "balance": 5000.01
+}
+
 ### Negative test: User cannot deposit zero amount
 ### Expected result: 400 Bad Request
 POST http://localhost:4111/api/v1/accounts/deposit
@@ -196,6 +229,41 @@ Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
 ### TRANSFER TESTS
 ### =========================
 
+### Positive test: User can transfer minimum amount
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 0.01
+}
+
+### Positive test: User can transfer amount just below max limit
+### Expected result: 200 OK
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 9999.99
+}
+
+### Negative test: User cannot transfer amount just above max limit
+### Expected result: 400 Bad Request
+POST http://localhost:4111/api/v1/accounts/transfer
+Content-Type: application/json
+Authorization: Basic a2F0ZTE5OTg5OnZlcnlzVFJvbmdQYXNzd29yZDMzJDg=
+
+{
+  "senderAccountId": 3,
+  "receiverAccountId": 4,
+  "amount": 10000.01
+}
 
 ### Negative test: User cannot transfer zero amount
 ### Expected result: 400 Bad Request
