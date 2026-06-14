@@ -11,11 +11,27 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.stream.Stream;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 public class DepositTest extends BaseTest {
 
+    private double getAccountBalance(int accountId) {
+        return given()
+                .accept(ContentType.JSON)
+                .header("Authorization", USER_TOKEN)
+                .get(BASE_URL + "/customer/accounts")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .jsonPath()
+                .getDouble("find { it.id == " + accountId + " }.balance");
+    }
+
     @Test
     public void userCanDepositMoneyWithCorrectAmount() {
+        double balanceBefore = getAccountBalance(1);
+
         given()
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -30,6 +46,10 @@ public class DepositTest extends BaseTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        double balanceAfter = getAccountBalance(1);
+
+        assertThat(balanceAfter, Matchers.closeTo(balanceBefore + 100, 0.001));
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -43,6 +63,8 @@ public class DepositTest extends BaseTest {
     @MethodSource("depositValidData")
     @ParameterizedTest
     public void userCanDepositMoneyWithBoundaryValidAmount(double balance) {
+        double balanceBefore = getAccountBalance(1);
+
         String requestBody = String.format(
                 """
                         {
@@ -60,6 +82,10 @@ public class DepositTest extends BaseTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_OK);
+
+        double balanceAfter = getAccountBalance(1);
+
+        assertThat(balanceAfter, Matchers.closeTo(balanceBefore + balance, 0.001));
     }
 
     public static Stream<Arguments> depositInvalidData() {
@@ -74,6 +100,8 @@ public class DepositTest extends BaseTest {
     @ParameterizedTest
     public void userCanNotDepositMoneyWithInvalidAmount(double balance,
                                                         String errorValue) {
+        double balanceBefore = getAccountBalance(1);
+
         String requestBody = String.format(
                 """
                         {
@@ -92,5 +120,9 @@ public class DepositTest extends BaseTest {
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST)
                 .body(Matchers.equalTo(errorValue));
+
+        double balanceAfter = getAccountBalance(1);
+
+        assertThat(balanceAfter, Matchers.closeTo(balanceBefore, 0.001));
     }
 }
