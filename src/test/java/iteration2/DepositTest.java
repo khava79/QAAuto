@@ -1,35 +1,36 @@
 package iteration2;
 
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
+import iteration2.BaseTest;
+import models.DepositRequest;
+import models.DepositResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import requests.DepositRequester;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
-
-import static io.restassured.RestAssured.given;
 
 public class DepositTest extends BaseTest {
 
     @Test
     public void userCanDepositMoneyWithCorrectAmount() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body("""
-                        {
-                          "id": 1,
-                          "balance": 100
-                        }
-                        """)
-                .post(BASE_URL + "/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        DepositRequest depositRequest = DepositRequest.builder()
+                .id(1)
+                .balance(100)
+                .build();
+
+        DepositResponse depositResponse = new DepositRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsOK())
+                .post(depositRequest)
+                .extract()
+                .as(DepositResponse.class);
+
+        softly.assertThat(depositResponse.getId()).isEqualTo(depositRequest.getId());
+        softly.assertThat(depositResponse.getBalance()).isGreaterThanOrEqualTo(depositRequest.getBalance());
     }
 
     public static Stream<Arguments> depositValidData() {
@@ -43,23 +44,20 @@ public class DepositTest extends BaseTest {
     @MethodSource("depositValidData")
     @ParameterizedTest
     public void userCanDepositMoneyWithBoundaryValidAmount(double balance) {
-        String requestBody = String.format(
-                """
-                        {
-                          "id": 1,
-                          "balance": %s
-                        }
-                        """, balance);
+        DepositRequest depositRequest = DepositRequest.builder()
+                .id(1)
+                .balance(balance)
+                .build();
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .post(BASE_URL + "/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+        DepositResponse depositResponse = new DepositRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsOK())
+                .post(depositRequest)
+                .extract()
+                .as(DepositResponse.class);
+
+        softly.assertThat(depositResponse.getId()).isEqualTo(depositRequest.getId());
+        softly.assertThat(depositResponse.getBalance()).isGreaterThanOrEqualTo(balance);
     }
 
     public static Stream<Arguments> depositInvalidData() {
@@ -73,24 +71,15 @@ public class DepositTest extends BaseTest {
     @MethodSource("depositInvalidData")
     @ParameterizedTest
     public void userCanNotDepositMoneyWithInvalidAmount(double balance,
-                                                        String errorValue) {
-        String requestBody = String.format(
-                """
-                        {
-                          "id": 1,
-                          "balance": %s
-                        }
-                        """, balance);
+                                                        String errorMessage) {
+        DepositRequest depositRequest = DepositRequest.builder()
+                .id(1)
+                .balance(balance)
+                .build();
 
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", USER_TOKEN)
-                .body(requestBody)
-                .post(BASE_URL + "/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(Matchers.equalTo(errorValue));
+        new DepositRequester(
+                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                ResponseSpecs.requestReturnsBadRequestWithPlainText(errorMessage))
+                .post(depositRequest);
     }
 }

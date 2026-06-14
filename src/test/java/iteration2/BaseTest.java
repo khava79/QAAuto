@@ -1,26 +1,19 @@
 package iteration2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import org.junit.jupiter.api.BeforeAll;
-
-import java.util.List;
+import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 public class BaseTest {
+    protected SoftAssertions softly;
 
-    protected static final String BASE_URL = "http://localhost:4111/api/v1";
+    @BeforeEach
+    public void setupTest() {
+        this.softly = new SoftAssertions();
+    }
 
-    protected static final String USER_TOKEN =
-            "Basic a2F0ZTIwMjY6UGFzc3dvcmQzMyQ=";
-
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(
-                        new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()
-                )
-        );
+    @AfterEach
+    public void afterTest() {
+        softly.assertAll();
     }
 }
