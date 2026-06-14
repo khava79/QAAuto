@@ -2,6 +2,7 @@ package iteration2;
 
 import io.restassured.http.ContentType;
 import org.apache.http.HttpStatus;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -13,6 +14,19 @@ import java.util.stream.Stream;
 import static io.restassured.RestAssured.given;
 
 public class ProfileNameTest extends BaseTest {
+
+    private String getProfileName() {
+        return given()
+                .accept(ContentType.JSON)
+                .header("Authorization", USER_TOKEN)
+                .get(BASE_URL + "/customer/profile")
+                .then()
+                .assertThat()
+                .statusCode(HttpStatus.SC_OK)
+                .extract()
+                .jsonPath()
+                .getString("name");
+    }
 
     @Test
     public void userCanUpdateProfileName() {
@@ -28,9 +42,14 @@ public class ProfileNameTest extends BaseTest {
                 .put(BASE_URL + "/customer/profile")
                 .then()
                 .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("customer.name", Matchers.equalTo("Eddie Davidson"))
-                .body("message", Matchers.equalTo("Profile updated successfully"));
+                .statusCode(HttpStatus.SC_OK);
+
+        String profileNameAfter = getProfileName();
+
+        MatcherAssert.assertThat(
+                profileNameAfter,
+                Matchers.equalTo("Eddie Davidson")
+        );
     }
 
     public static Stream<Arguments> profileNameValidData() {
@@ -59,9 +78,14 @@ public class ProfileNameTest extends BaseTest {
                 .put(BASE_URL + "/customer/profile")
                 .then()
                 .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("customer.name", Matchers.equalTo(name))
-                .body("message", Matchers.equalTo("Profile updated successfully"));
+                .statusCode(HttpStatus.SC_OK);
+
+        String profileNameAfter = getProfileName();
+
+        MatcherAssert.assertThat(
+                profileNameAfter,
+                Matchers.equalTo(name)
+        );
     }
 
     public static Stream<Arguments> profileNameInvalidData() {
@@ -76,6 +100,8 @@ public class ProfileNameTest extends BaseTest {
     @MethodSource("profileNameInvalidData")
     @ParameterizedTest
     public void userCanNotUpdateProfileNameWithInvalidData(String name) {
+        String profileNameBefore = getProfileName();
+
         String requestBody = String.format(
                 """
                         {
@@ -92,5 +118,12 @@ public class ProfileNameTest extends BaseTest {
                 .then()
                 .assertThat()
                 .statusCode(HttpStatus.SC_BAD_REQUEST);
+
+        String profileNameAfter = getProfileName();
+
+        MatcherAssert.assertThat(
+                profileNameAfter,
+                Matchers.equalTo(profileNameBefore)
+        );
     }
 }
