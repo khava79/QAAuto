@@ -9,6 +9,9 @@ public class ResponseSpecs {
 
     private ResponseSpecs() {}
 
+    public static final String PROFILE_UPDATED_SUCCESSFULLY =
+            "Profile updated successfully";
+
     private static ResponseSpecBuilder defaultResponseBuilder() {
         return new ResponseSpecBuilder();
     }
@@ -16,6 +19,14 @@ public class ResponseSpecs {
     public static ResponseSpecification requestReturnsOK() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
+                .build();
+    }
+
+
+    public static ResponseSpecification requestReturnsOKWithMessage(String message) {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectBody("message", Matchers.equalTo(message))
                 .build();
     }
 

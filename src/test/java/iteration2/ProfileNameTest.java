@@ -1,5 +1,6 @@
 package iteration2;
 
+import generators.ProfileNameRequestGenerator;
 import models.ProfileNameRequest;
 import models.ProfileNameResponse;
 import org.junit.jupiter.api.Test;
@@ -7,7 +8,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.ProfileNameRequester;
-import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
@@ -17,14 +17,14 @@ public class ProfileNameTest extends BaseTest {
     @Test
     public void userCanUpdateProfileName() {
 
-        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
-                .name("Eddie Davidson")
-                .build();
+        ProfileNameRequest profileNameRequest =
+                ProfileNameRequestGenerator.generate();
 
         ProfileNameResponse profileNameResponse =
                 new ProfileNameRequester(
-                        RequestSpecs.authAsUser("kate2026", "Password33$"),
-                        ResponseSpecs.requestReturnsOK())
+                        userSpec,
+                        ResponseSpecs.requestReturnsOKWithMessage(
+                                ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY))
                         .put(profileNameRequest)
                         .extract()
                         .as(ProfileNameResponse.class);
@@ -32,8 +32,7 @@ public class ProfileNameTest extends BaseTest {
         softly.assertThat(profileNameRequest.getName())
                 .isEqualTo(profileNameResponse.getCustomer().getName());
 
-        softly.assertThat(profileNameResponse.getMessage())
-                .isEqualTo("Profile updated successfully");
+        softly.assertAll();
     }
 
     public static Stream<Arguments> profileNameValidData() {
@@ -48,14 +47,14 @@ public class ProfileNameTest extends BaseTest {
     @ParameterizedTest
     public void userCanUpdateProfileNameWithValidData(String name) {
 
-        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
-                .name(name)
-                .build();
+        ProfileNameRequest profileNameRequest =
+                ProfileNameRequestGenerator.generate(name);
 
         ProfileNameResponse profileNameResponse =
                 new ProfileNameRequester(
-                        RequestSpecs.authAsUser("kate2026", "Password33$"),
-                        ResponseSpecs.requestReturnsOK())
+                        userSpec,
+                        ResponseSpecs.requestReturnsOKWithMessage(
+                                ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY))
                         .put(profileNameRequest)
                         .extract()
                         .as(ProfileNameResponse.class);
@@ -63,8 +62,7 @@ public class ProfileNameTest extends BaseTest {
         softly.assertThat(profileNameRequest.getName())
                 .isEqualTo(profileNameResponse.getCustomer().getName());
 
-        softly.assertThat(profileNameResponse.getMessage())
-                .isEqualTo("Profile updated successfully");
+        softly.assertAll();
     }
 
     public static Stream<Arguments> profileNameInvalidData() {
@@ -80,12 +78,11 @@ public class ProfileNameTest extends BaseTest {
     @ParameterizedTest
     public void userCanNotUpdateProfileNameWithInvalidData(String name) {
 
-        ProfileNameRequest profileNameRequest = ProfileNameRequest.builder()
-                .name(name)
-                .build();
+        ProfileNameRequest profileNameRequest =
+                ProfileNameRequestGenerator.generate(name);
 
         new ProfileNameRequester(
-                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                userSpec,
                 ResponseSpecs.requestReturnsBadRequest())
                 .put(profileNameRequest);
     }

@@ -2,7 +2,9 @@ package generators;
 
 import org.apache.commons.lang3.RandomStringUtils;
 
-    public class RandomData {
+import java.util.concurrent.ThreadLocalRandom;
+
+public class RandomData {
         private RandomData() {}
 
         public static String getUsername() {
@@ -13,5 +15,15 @@ import org.apache.commons.lang3.RandomStringUtils;
             return RandomStringUtils.randomAlphabetic(3).toUpperCase() +
                     RandomStringUtils.randomAlphabetic(5).toLowerCase() +
                     RandomStringUtils.randomNumeric(3) + "$" ;
+        }
+
+        public static double getBalance() {
+            return ThreadLocalRandom.current().nextDouble(1, 5000);
+        }
+
+        public static String getFullName() {
+            return RandomStringUtils.randomAlphabetic(6)
+                    + " "
+                    + RandomStringUtils.randomAlphabetic(8);
         }
     }

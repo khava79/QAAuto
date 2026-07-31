@@ -1,5 +1,7 @@
 package iteration2;
 
+import generators.DepositRequestGenerator;
+import generators.TransferRequestGenerator;
 import models.DepositRequest;
 import models.TransferRequest;
 import org.junit.jupiter.api.Test;
@@ -8,21 +10,19 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import requests.DepositRequester;
 import requests.TransferRequester;
-import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
 public class TransferTest extends BaseTest {
 
+
     private void depositMoneyToSenderAccount(double balance) {
-        DepositRequest depositRequest = DepositRequest.builder()
-                .id(1)
-                .balance(balance)
-                .build();
+        DepositRequest depositRequest =
+                DepositRequestGenerator.generate(senderAccount.getId(), balance);
 
         new DepositRequester(
-                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                userSpec,
                 ResponseSpecs.requestReturnsOK())
                 .post(depositRequest);
     }
@@ -31,14 +31,14 @@ public class TransferTest extends BaseTest {
     public void userCanTransferMoneyBetweenOwnAccounts() {
         depositMoneyToSenderAccount(100);
 
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(1)
-                .receiverAccountId(2)
-                .amount(100)
-                .build();
+        TransferRequest transferRequest =
+                TransferRequestGenerator.generate(
+                        senderAccount.getId(),
+                        receiverAccount.getId(),
+                        50);
 
         new TransferRequester(
-                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                userSpec,
                 ResponseSpecs.requestReturnsOK())
                 .post(transferRequest);
     }
@@ -55,14 +55,14 @@ public class TransferTest extends BaseTest {
     public void userCanTransferMoneyWithBoundaryValidAmount(double amount) {
         depositMoneyToSenderAccount(amount);
 
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(1)
-                .receiverAccountId(2)
-                .amount(amount)
-                .build();
+        TransferRequest transferRequest =
+                TransferRequestGenerator.generate(
+                        senderAccount.getId(),
+                        receiverAccount.getId(),
+                        amount);
 
         new TransferRequester(
-                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                userSpec,
                 ResponseSpecs.requestReturnsOK())
                 .post(transferRequest);
     }
@@ -79,14 +79,14 @@ public class TransferTest extends BaseTest {
     @ParameterizedTest
     public void userCanNotTransferMoneyWithInvalidAmount(double amount,
                                                          String errorValue) {
-        TransferRequest transferRequest = TransferRequest.builder()
-                .senderAccountId(1)
-                .receiverAccountId(2)
-                .amount(amount)
-                .build();
+        TransferRequest transferRequest =
+                TransferRequestGenerator.generate(
+                        senderAccount.getId(),
+                        receiverAccount.getId(),
+                        amount);
 
         new TransferRequester(
-                RequestSpecs.authAsUser("kate2026", "Password33$"),
+                userSpec,
                 ResponseSpecs.requestReturnsBadRequestWithPlainText(errorValue))
                 .post(transferRequest);
     }
