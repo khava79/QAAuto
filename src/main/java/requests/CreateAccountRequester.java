@@ -11,23 +11,19 @@ public class CreateAccountRequester extends Request<BaseModel>{
     public CreateAccountRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
-
+    
     @Override
     public ValidatableResponse post(BaseModel model) {
-        return given()
-                .spec(requestSpecification)
-                .post("/api/v1/accounts")
-                .then()
-                .assertThat()
-                .spec(responseSpecification);
+        return post();
     }
-
+    
     public ValidatableResponse post() {
         return given()
-                .spec(requestSpecification)
-                .post("/api/v1/accounts")
-                .then()
-                .assertThat()
-                .spec(responseSpecification);
-    }
+            .spec(requestSpecification)
+            .post("/api/v1/accounts")
+            .then()
+            .assertThat()
+            .spec(responseSpecification);
+}
+
 }
