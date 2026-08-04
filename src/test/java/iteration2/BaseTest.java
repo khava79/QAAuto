@@ -36,21 +36,20 @@ public class BaseTest {
         userSpec = RequestSpecs.authAsUser(
                 user.getUsername(),
                 user.getPassword());
-
-
+        
         senderAccount = new CreateAccountRequester(
-                userSpec,
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .as(CreateAccountResponse.class);
+            userSpec,
+            ResponseSpecs.entityWasCreated())
+            .post()
+            .extract()
+            .as(CreateAccountResponse.class);
 
         receiverAccount = new CreateAccountRequester(
-                userSpec,
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .as(CreateAccountResponse.class);
+            userSpec,
+            ResponseSpecs.entityWasCreated())
+            .post()
+            .extract()
+            .as(CreateAccountResponse.class);
 
 
     }
