@@ -26,12 +26,8 @@ public class BaseTest {
 
         user = CreateUserRequestGenerator.generate();
 
-        createdUser = new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(user)
-                .extract()
-                .as(CreateUserResponse.class);
+        createdUser = new AdminCreateUserRequester(RequestSpecs.adminSpec(),
+                ResponseSpecs.entityWasCreated()).post(user).extract().as(CreateUserResponse.class);
 
         userSpec = RequestSpecs.authAsUser(
                 user.getUsername(),
@@ -39,17 +35,11 @@ public class BaseTest {
         
         senderAccount = new CreateAccountRequester(
             userSpec,
-            ResponseSpecs.entityWasCreated())
-            .post()
-            .extract()
-            .as(CreateAccountResponse.class);
-
+            ResponseSpecs.entityWasCreated()).post().extract().as(CreateAccountResponse.class);
+        
         receiverAccount = new CreateAccountRequester(
             userSpec,
-            ResponseSpecs.entityWasCreated())
-            .post()
-            .extract()
-            .as(CreateAccountResponse.class);
+            ResponseSpecs.entityWasCreated()).post().extract().as(CreateAccountResponse.class);
 
 
     }
