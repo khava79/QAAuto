@@ -7,7 +7,8 @@ import org.hamcrest.Matchers;
 
 public class ResponseSpecs {
 
-    private ResponseSpecs() {}
+    private ResponseSpecs() {
+    }
 
     public static final String PROFILE_UPDATED_SUCCESSFULLY =
             "Profile updated successfully";
@@ -16,14 +17,21 @@ public class ResponseSpecs {
         return new ResponseSpecBuilder();
     }
 
+    public static ResponseSpecification entityWasCreated() {
+        return defaultResponseBuilder()
+                .expectStatusCode(HttpStatus.SC_CREATED)
+                .build();
+    }
+
     public static ResponseSpecification requestReturnsOK() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
                 .build();
     }
 
+    public static ResponseSpecification requestReturnsOKWithMessage(
+            String message) {
 
-    public static ResponseSpecification requestReturnsOKWithMessage(String message) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
                 .expectBody("message", Matchers.equalTo(message))
@@ -36,16 +44,25 @@ public class ResponseSpecs {
                 .build();
     }
 
-    public static ResponseSpecification entityWasCreated() {
+    public static ResponseSpecification requestReturnsBadRequest(
+            String errorKey,
+            String errorValue) {
+
         return defaultResponseBuilder()
-                .expectStatusCode(HttpStatus.SC_CREATED)
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .expectBody(
+                        errorKey,
+                        Matchers.equalTo(errorValue))
                 .build();
     }
 
-    public static ResponseSpecification requestReturnsBadRequestWithPlainText(String errorMessage) {
+    public static ResponseSpecification requestReturnsBadRequestWithPlainText(
+            String errorMessage) {
+
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(Matchers.equalTo(errorMessage))
+                .expectBody(
+                        Matchers.equalTo(errorMessage))
                 .build();
     }
 }

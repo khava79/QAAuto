@@ -8,27 +8,27 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.DepositRequester;
-import requests.TransferRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.steps.UserSteps;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
 public class TransferTest extends BaseTest {
 
-
     private void depositMoneyToSenderAccount(double balance) {
         DepositRequest depositRequest =
-                DepositRequestGenerator.generate(senderAccount.getId(), balance);
+                DepositRequestGenerator.generate(
+                        senderAccount.getId(),
+                        balance);
 
-        new DepositRequester(
-                userSpec,
-                ResponseSpecs.requestReturnsOK())
-                .post(depositRequest);
+        UserSteps.deposit(userSpec, depositRequest);
     }
 
     @Test
     public void userCanTransferMoneyBetweenOwnAccounts() {
+
         depositMoneyToSenderAccount(100);
 
         TransferRequest transferRequest =
@@ -37,10 +37,7 @@ public class TransferTest extends BaseTest {
                         receiverAccount.getId(),
                         50);
 
-        new TransferRequester(
-                userSpec,
-                ResponseSpecs.requestReturnsOK())
-                .post(transferRequest);
+        UserSteps.transfer(userSpec, transferRequest);
     }
 
     public static Stream<Arguments> transferValidData() {
@@ -53,6 +50,7 @@ public class TransferTest extends BaseTest {
     @MethodSource("transferValidData")
     @ParameterizedTest
     public void userCanTransferMoneyWithBoundaryValidAmount(double amount) {
+
         depositMoneyToSenderAccount(amount);
 
         TransferRequest transferRequest =
@@ -61,33 +59,42 @@ public class TransferTest extends BaseTest {
                         receiverAccount.getId(),
                         amount);
 
-        new TransferRequester(
-                userSpec,
-                ResponseSpecs.requestReturnsOK())
-                .post(transferRequest);
+        UserSteps.transfer(userSpec, transferRequest);
     }
 
     public static Stream<Arguments> transferInvalidData() {
         return Stream.of(
-                Arguments.of(0, "Transfer amount must be at least 0.01"),
-                Arguments.of(-100, "Transfer amount must be at least 0.01"),
-                Arguments.of(10000.01, "Transfer amount cannot exceed 10000")
+                Arguments.of(
+                        0,
+                        "Transfer amount must be at least 0.01"
+                ),
+                Arguments.of(
+                        -100,
+                        "Transfer amount must be at least 0.01"
+                ),
+                Arguments.of(
+                        10000.01,
+                        "Transfer amount cannot exceed 10000"
+                )
         );
     }
 
     @MethodSource("transferInvalidData")
     @ParameterizedTest
-    public void userCanNotTransferMoneyWithInvalidAmount(double amount,
-                                                         String errorValue) {
+    public void userCanNotTransferMoneyWithInvalidAmount(
+            double amount,
+            String errorValue) {
+
         TransferRequest transferRequest =
                 TransferRequestGenerator.generate(
                         senderAccount.getId(),
                         receiverAccount.getId(),
                         amount);
 
-        new TransferRequester(
+        new CrudRequester(
                 userSpec,
-                ResponseSpecs.requestReturnsBadRequestWithPlainText(errorValue))
+                ResponseSpecs.requestReturnsBadRequestWithPlainText(errorValue),
+                Endpoint.TRANSFER)
                 .post(transferRequest);
     }
 }

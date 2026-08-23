@@ -3,37 +3,18 @@ package iteration2;
 import generators.ProfileNameRequestGenerator;
 import models.ProfileNameRequest;
 import models.ProfileNameResponse;
-import org.junit.jupiter.api.Test;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.ProfileNameRequester;
+import requests.skelethon.Endpoint;
+import requests.skelethon.requesters.CrudRequester;
+import requests.steps.UserSteps;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 
 public class ProfileNameTest extends BaseTest {
-
-    @Test
-    public void userCanUpdateProfileName() {
-
-        ProfileNameRequest profileNameRequest =
-                ProfileNameRequestGenerator.generate();
-
-        ProfileNameResponse profileNameResponse =
-                new ProfileNameRequester(
-                        userSpec,
-                        ResponseSpecs.requestReturnsOKWithMessage(
-                                ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY))
-                        .put(profileNameRequest)
-                        .extract()
-                        .as(ProfileNameResponse.class);
-
-        softly.assertThat(profileNameRequest.getName())
-                .isEqualTo(profileNameResponse.getCustomer().getName());
-
-        softly.assertAll();
-    }
 
     public static Stream<Arguments> profileNameValidData() {
         return Stream.of(
@@ -51,18 +32,13 @@ public class ProfileNameTest extends BaseTest {
                 ProfileNameRequestGenerator.generate(name);
 
         ProfileNameResponse profileNameResponse =
-                new ProfileNameRequester(
+                UserSteps.updateProfileName(
                         userSpec,
-                        ResponseSpecs.requestReturnsOKWithMessage(
-                                ResponseSpecs.PROFILE_UPDATED_SUCCESSFULLY))
-                        .put(profileNameRequest)
-                        .extract()
-                        .as(ProfileNameResponse.class);
+                        profileNameRequest);
 
-        softly.assertThat(profileNameRequest.getName())
-                .isEqualTo(profileNameResponse.getCustomer().getName());
-
-        softly.assertAll();
+        ModelAssertions
+                .assertThatModels(profileNameRequest, profileNameResponse)
+                .match();
     }
 
     public static Stream<Arguments> profileNameInvalidData() {
@@ -81,9 +57,10 @@ public class ProfileNameTest extends BaseTest {
         ProfileNameRequest profileNameRequest =
                 ProfileNameRequestGenerator.generate(name);
 
-        new ProfileNameRequester(
+        new CrudRequester(
                 userSpec,
-                ResponseSpecs.requestReturnsBadRequest())
+                ResponseSpecs.requestReturnsBadRequest(),
+                Endpoint.PROFILE_NAME)
                 .put(profileNameRequest);
     }
 }
