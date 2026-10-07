@@ -1,17 +1,17 @@
 package iteration2.api;
 
-import generators.DepositRequestGenerator;
-import models.DepositRequest;
-import models.DepositResponse;
-import models.comparison.ModelAssertions;
+import api.generators.DepositRequestGenerator;
+import api.models.DepositRequest;
+import api.models.DepositResponse;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.UserSteps;
-import specs.ResponseSpecs;
+import api.requests.skelethon.Endpoint;
+import api.requests.skelethon.requesters.CrudRequester;
+import api.requests.steps.UserSteps;
+import api.specs.ResponseSpecs;
 
 import java.util.stream.Stream;
 

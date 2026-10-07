@@ -1,13 +1,13 @@
 package iteration2.api;
 
 import io.restassured.specification.RequestSpecification;
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
+import api.models.CreateAccountResponse;
+import api.models.CreateUserRequest;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
-import requests.steps.AdminSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
 
 public class BaseTest {
 
