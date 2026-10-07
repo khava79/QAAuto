@@ -1,0 +1,18 @@
+package api.generators;
+
+import api.models.ProfileNameRequest;
+
+public class ProfileNameRequestGenerator {
+
+    private ProfileNameRequestGenerator() {}
+
+    public static ProfileNameRequest generate() {
+        return RandomModelGenerator.generate(ProfileNameRequest.class);
+    }
+
+    public static ProfileNameRequest generate(String name) {
+        return ProfileNameRequest.builder()
+                .name(name)
+                .build();
+    }
+}
