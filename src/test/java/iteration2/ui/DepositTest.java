@@ -1,16 +1,15 @@
 package iteration2.ui;
 
 import api.models.CreateAccountResponse;
+import common.annotations.Browsers;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import api.requests.steps.UserSteps;
 import ui.pages.BankAlert;
 import ui.pages.UserDashboard;
 import java.util.stream.Stream;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 public class DepositTest extends BaseUITest {
@@ -26,45 +25,23 @@ public class DepositTest extends BaseUITest {
 
     @ParameterizedTest
     @MethodSource("validDepositAmounts")
+    @Browsers({"chrome"})
     public void userCanDepositMoneyTest(
             double depositAmount,
             double expectedBalance) {
 
-
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .depositMoney(
-                        senderAccount.getAccountNumber(),
-                        depositAmount
-                )
-                .checkAlertMessageAndAccept(
-                        BankAlert.DEPOSIT_SUCCESSFULLY.getMessage()
-                                + depositAmount
-                                + " to account "
-                                + senderAccount.getAccountNumber()
-                                + "!"
-                );
-
+        new UserDashboard().open().depositMoney(senderAccount.getAccountNumber(), depositAmount)
+                .checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULLY.getMessage() + depositAmount + " to account " + senderAccount.getAccountNumber() + "!");
 
         CreateAccountResponse actualSenderAccount =
-                new UserSteps(
-                        user.getUsername(),
-                        user.getPassword()
-                ).getAccountByNumber(
-                        senderAccount.getAccountNumber()
-                );
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance())
-                .isEqualTo(expectedBalance);
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(expectedBalance);
     }
-
 
 
     // TC-DEP-03, TC-DEP-04, TC-DEP-05
     // Негативные сценарии: 5001, 0, -100
-
     public static Stream<Arguments> invalidDepositAmounts() {
         return Stream.of(
                 Arguments.of(
@@ -85,72 +62,32 @@ public class DepositTest extends BaseUITest {
 
     @ParameterizedTest
     @MethodSource("invalidDepositAmounts")
-    public void userCanNotDepositMoneyWithInvalidAmount(
+    public void userCannotDepositMoneyWithInvalidAmount(
             double depositAmount,
             String expectedErrorMessage) {
 
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .depositMoney(
-                        senderAccount.getAccountNumber(),
-                        depositAmount
-                )
+        new UserDashboard().open().depositMoney(senderAccount.getAccountNumber(), depositAmount)
                 .checkAlertMessageAndAccept(expectedErrorMessage);
 
-
         CreateAccountResponse actualSenderAccount =
-                new UserSteps(
-                        user.getUsername(),
-                        user.getPassword()
-                ).getAccountByNumber(
-                        senderAccount.getAccountNumber()
-                );
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance())
-                .isZero();
+        assertThat(actualSenderAccount.getBalance()).isZero();
     }
-
 
 
     // TC-DEP-06
     // Пустое поле суммы
-
     @Test
-    public void userCanNotDepositMoneyWithEmptyAmount() {
+    public void userCannotDepositMoneyWithEmptyAmount() {
 
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .depositMoneyWithEmptyAmount(
-                        senderAccount.getAccountNumber()
-                )
-                .checkAlertMessageAndAccept(
-                        BankAlert.INVALID_DEPOSIT_AMOUNT.getMessage()
-                );
+        new UserDashboard().open().depositMoneyWithEmptyAmount(senderAccount.getAccountNumber())
+                .checkAlertMessageAndAccept(BankAlert.INVALID_DEPOSIT_AMOUNT.getMessage());
 
         CreateAccountResponse actualSenderAccount =
-                new UserSteps(
-                        user.getUsername(),
-                        user.getPassword()
-                ).getAccountByNumber(
-                        senderAccount.getAccountNumber()
-                );
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance())
-                .isZero();
+        assertThat(actualSenderAccount.getBalance()).isZero();
     }
 
-
-
-    private String formatAmount(double amount) {
-
-        if (amount == (long) amount) {
-            return String.valueOf((long) amount);
-        }
-
-        return String.valueOf(amount);
-    }
 }
