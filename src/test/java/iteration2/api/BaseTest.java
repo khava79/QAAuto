@@ -16,6 +16,7 @@ public class BaseTest {
     protected SoftAssertions softly;
     protected CreateAccountResponse senderAccount;
     protected CreateAccountResponse receiverAccount;
+    protected UserSteps userSteps;
 
     @BeforeEach
     public void setupTest() {
@@ -28,8 +29,14 @@ public class BaseTest {
                 user.getUsername(),
                 user.getPassword());
 
+        userSteps = new UserSteps(
+                user.getUsername(),
+                user.getPassword());
+
         senderAccount = UserSteps.createAccount(userSpec);
 
         receiverAccount = UserSteps.createAccount(userSpec);
+
+        }
+
     }
-}

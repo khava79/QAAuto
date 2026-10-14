@@ -4,7 +4,6 @@ import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.SelenideElement;
 import lombok.Getter;
-
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 
@@ -72,36 +71,27 @@ public class UserDashboard extends BasePage<UserDashboard> {
         return this;
     }
 
-    public UserDashboard depositMoney(
-            String accountNumber,
-            double amount) {
+    public UserDashboard depositMoney(String accountNumber, double amount) {
+        fillDepositForm(accountNumber);
 
-        depositMoney.click();
-
-        accountSelector
-                .selectOptionContainingText(accountNumber);
-
-        depositInput
-                .setValue(String.valueOf(amount));
-
+        depositInput.setValue(String.valueOf(amount));
         depositButton.click();
 
         return this;
     }
 
-    public UserDashboard depositMoneyWithEmptyAmount(
-            String accountNumber) {
-
-        depositMoney.click();
-
-        accountSelector
-                .selectOptionContainingText(accountNumber);
+    public UserDashboard depositMoneyWithEmptyAmount(String accountNumber) {
+        fillDepositForm(accountNumber);
 
         depositInput.clear();
-
         depositButton.click();
 
         return this;
+    }
+
+    private void fillDepositForm(String accountNumber) {
+        depositMoney.click();
+        accountSelector.selectOptionContainingText(accountNumber);
     }
 
     public UserDashboard openProfile() {
@@ -117,10 +107,7 @@ public class UserDashboard extends BasePage<UserDashboard> {
                 .shouldBe(visible)
                 .setValue(name);
 
-        saveChangesButton
-                .shouldBe(visible)
-                .click();
-
+        saveProfileName();
         return this;
     }
 
@@ -129,11 +116,14 @@ public class UserDashboard extends BasePage<UserDashboard> {
                 .shouldBe(visible)
                 .clear();
 
+        saveProfileName();
+        return this;
+    }
+
+    private void saveProfileName() {
         saveChangesButton
                 .shouldBe(visible)
                 .click();
-
-        return this;
     }
 
     public UserDashboard checkProfileName(String name) {
@@ -144,25 +134,20 @@ public class UserDashboard extends BasePage<UserDashboard> {
         return this;
     }
 
+
     public UserDashboard transferMoney(
             String senderAccountNumber,
             String recipientName,
             String recipientAccountNumber,
             double amount) {
 
-        makeTransfer.click();
+        fillTransferForm(
+                senderAccountNumber,
+                recipientName,
+                recipientAccountNumber
+        );
 
-        accountSelector
-                .selectOptionContainingText(senderAccountNumber);
-
-        recipientNameInput
-                .setValue(recipientName);
-
-        recipientAccountInput
-                .setValue(recipientAccountNumber);
-
-        transferAmountInput
-                .setValue(String.valueOf(amount));
+        transferAmountInput.setValue(String.valueOf(amount));
 
         confirmCheck.click();
         sendTransferButton.click();
@@ -175,20 +160,27 @@ public class UserDashboard extends BasePage<UserDashboard> {
             String recipientName,
             String recipientAccountNumber) {
 
-        makeTransfer.click();
-
-        accountSelector
-                .selectOptionContainingText(senderAccountNumber);
-
-        recipientNameInput
-                .setValue(recipientName);
-
-        recipientAccountInput
-                .setValue(recipientAccountNumber);
+        fillTransferForm(
+                senderAccountNumber,
+                recipientName,
+                recipientAccountNumber
+        );
 
         confirmCheck.click();
         sendTransferButton.click();
 
         return this;
+    }
+
+    private void fillTransferForm(
+            String senderAccountNumber,
+            String recipientName,
+            String recipientAccountNumber) {
+
+        makeTransfer.click();
+
+        accountSelector.selectOptionContainingText(senderAccountNumber);
+        recipientNameInput.setValue(recipientName);
+        recipientAccountInput.setValue(recipientAccountNumber);
     }
 }
