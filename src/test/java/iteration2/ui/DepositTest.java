@@ -31,7 +31,7 @@ public class DepositTest extends BaseUITest {
             double expectedBalance) {
 
         new UserDashboard().open().depositMoney(senderAccount.getAccountNumber(), depositAmount)
-                .checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULLY.getMessage() + depositAmount + " to account " + senderAccount.getAccountNumber() + "!");
+                .checkAlertMessageAndAccept(BankAlert.DEPOSIT_SUCCESSFULLY.format(depositAmount, senderAccount.getAccountNumber()));
 
         CreateAccountResponse actualSenderAccount =
                 userSteps.getAccountByNumber(senderAccount.getAccountNumber());

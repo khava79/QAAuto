@@ -9,13 +9,15 @@ import ui.pages.UserDashboard;
 import java.util.stream.Stream;
 
 public class ProfileNameTest extends BaseUITest {
+    private static final String VALID_PROFILE_NAME = "Ivan Ivanov";
+
 
     @Test
     public void userCanChangeProfileNameTest() {
-        new UserDashboard().open().openProfile().changeProfileName("Ivan Ivanov").checkAlertMessageAndAccept(
+        new UserDashboard().open().openProfile().changeProfileName(VALID_PROFILE_NAME).checkAlertMessageAndAccept(
                 BankAlert.PROFILE_NAME_UPDATED.getMessage());
 
-        new UserDashboard().open().checkProfileName("Ivan Ivanov");
+        new UserDashboard().open().checkProfileName(VALID_PROFILE_NAME);
 
     }
 
@@ -29,7 +31,7 @@ public class ProfileNameTest extends BaseUITest {
         );
     }
 
-    @ParameterizedTest(name = "{1}")
+    @ParameterizedTest(name = "[{index}] invalidName={0}")
     @MethodSource("invalidNames")
     public void userCannotChangeProfileNameToInvalidValueTest(
             String invalidName,
@@ -39,6 +41,7 @@ public class ProfileNameTest extends BaseUITest {
                 BankAlert.INVALID_PROFILE_NAME.getMessage());
 
     }
+
 
 
     @Test

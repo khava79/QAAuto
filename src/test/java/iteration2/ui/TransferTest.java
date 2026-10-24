@@ -14,6 +14,9 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TransferTest extends BaseUITest {
+    private static final double MAX_DEPOSIT_AMOUNT = 5000.0;
+    private static final double INITIAL_BALANCE = 100.0;
+    private static final String NONEXISTENT_ACCOUNT_NUMBER = "ACC999999";
 
     // TC-TRANS-01, TC-TRANS-02
     // Позитивные сценарии: 100 и 10000
@@ -23,7 +26,7 @@ public class TransferTest extends BaseUITest {
         depositMoneyToSenderAccount(transferAmount);
 
         new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(),
-                        transferAmount).checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULLY.getMessage() + transferAmount);
+                        transferAmount).checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULLY.format(transferAmount));
 
         CreateAccountResponse actualSenderAccount =
                 userSteps.getAccountByNumber(senderAccount.getAccountNumber());
@@ -38,7 +41,7 @@ public class TransferTest extends BaseUITest {
 
     static Stream<Arguments> validTransferAmounts() {
         return Stream.of(
-                Arguments.of(100.0),
+                Arguments.of(INITIAL_BALANCE),
                 Arguments.of(10000.0)
         );
     }
@@ -49,7 +52,7 @@ public class TransferTest extends BaseUITest {
     @ParameterizedTest
     @MethodSource("invalidTransferAmounts")
     public void userCanNotTransferMoneyWithInvalidAmount(double transferAmount, String expectedMessage) {
-        depositMoneyToSenderAccount(100);
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
         new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(), transferAmount)
                 .checkAlertMessageAndAccept(expectedMessage);
@@ -60,7 +63,7 @@ public class TransferTest extends BaseUITest {
         CreateAccountResponse actualReceiverAccount =
                 userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance()).isEqualTo(100);
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
         assertThat(actualReceiverAccount.getBalance()).isZero();
     }
@@ -72,7 +75,7 @@ public class TransferTest extends BaseUITest {
                         BankAlert.TRANSFER_AMOUNT_MUST_BE_AT_LEAST_001.getMessage()
                 ),
                 Arguments.of(
-                        -100.0,
+                        -INITIAL_BALANCE,
                         BankAlert.TRANSFER_AMOUNT_MUST_BE_AT_LEAST_001.getMessage()
                 ),
                 Arguments.of(
@@ -87,9 +90,9 @@ public class TransferTest extends BaseUITest {
     // Недостаточно средств
     @Test
     public void userCanNotTransferMoneyWhenBalanceIsInsufficient() {
-        depositMoneyToSenderAccount(100);
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(), 101)
+        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(), INITIAL_BALANCE + 1)
                 .checkAlertMessageAndAccept(BankAlert.INSUFFICIENT_FUNDS.getMessage());
 
         CreateAccountResponse actualSenderAccount =
@@ -98,7 +101,7 @@ public class TransferTest extends BaseUITest {
         CreateAccountResponse actualReceiverAccount =
                 userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance()).isEqualTo(100);
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
         assertThat(actualReceiverAccount.getBalance()).isZero();
     }
@@ -108,15 +111,16 @@ public class TransferTest extends BaseUITest {
     // Несуществующий счёт
     @Test
     public void userCanNotTransferMoneyToNonexistentAccount() {
-        depositMoneyToSenderAccount(100);
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), "ACC999999", 100)
+        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), NONEXISTENT_ACCOUNT_NUMBER,
+                        INITIAL_BALANCE)
                 .checkAlertMessageAndAccept(BankAlert.NO_USER_FOUND_WITH_THIS_ACCOUNT_NUMBER.getMessage());
 
         CreateAccountResponse actualSenderAccount =
                 userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance()).isEqualTo(100);
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
     }
 
 
@@ -124,7 +128,7 @@ public class TransferTest extends BaseUITest {
     // Пустая сумма
     @Test
     public void userCanNotTransferMoneyWithEmptyAmount() {
-        depositMoneyToSenderAccount(100);
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
         new UserDashboard().open().transferMoneyWithEmptyAmount(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber())
                 .checkAlertMessageAndAccept(BankAlert.INVALID_TRANSFER_AMOUNT.getMessage());
@@ -135,7 +139,7 @@ public class TransferTest extends BaseUITest {
         CreateAccountResponse actualReceiverAccount =
                 userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        assertThat(actualSenderAccount.getBalance()).isEqualTo(100);
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
         assertThat(actualReceiverAccount.getBalance()).isZero();
     }
@@ -143,13 +147,13 @@ public class TransferTest extends BaseUITest {
 
 
     private void depositMoneyToSenderAccount(double amount) {
-        if (amount <= 5000) {
+        if (amount <= MAX_DEPOSIT_AMOUNT) {
             deposit(amount);
             return;
         }
 
-        deposit(5000);
-        deposit(amount - 5000);
+        deposit(MAX_DEPOSIT_AMOUNT);
+        deposit(amount - MAX_DEPOSIT_AMOUNT);
     }
 
 

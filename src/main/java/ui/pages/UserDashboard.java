@@ -91,6 +91,14 @@ public class UserDashboard extends BasePage<UserDashboard> {
 
     private void fillDepositForm(String accountNumber) {
         depositMoney.click();
+
+        accountSelector.shouldBe(Condition.visible);
+
+        accountSelector
+                .$$("option")
+                .findBy(Condition.text(accountNumber))
+                .shouldBe(Condition.exist);
+
         accountSelector.selectOptionContainingText(accountNumber);
     }
 
