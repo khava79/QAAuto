@@ -1,9 +1,11 @@
 package iteration1.ui;
 
 import api.models.CreateAccountResponse;
+import com.codeborne.selenide.Selenide;
 import common.annotations.UserSession;
 import common.storage.SessionStorage;
 import org.junit.jupiter.api.Test;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import ui.pages.BankAlert;
 import ui.pages.UserDashboard;
 
@@ -16,6 +18,8 @@ public class CreateAccountTest extends BaseUITest {
     @UserSession
     public void userCanCreateAccountTest() {
         new UserDashboard().open().createNewAccount();
+
+        Selenide.Wait().until(ExpectedConditions.alertIsPresent());
 
         List<CreateAccountResponse> createdAccounts = SessionStorage.getSteps().getAllAccounts();
 

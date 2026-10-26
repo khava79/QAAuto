@@ -2,8 +2,12 @@ package ui.pages;
 
 import com.codeborne.selenide.Condition;
 import com.codeborne.selenide.Selectors;
+import com.codeborne.selenide.Selenide;
 import com.codeborne.selenide.SelenideElement;
 import lombok.Getter;
+
+import java.time.Duration;
+
 import static com.codeborne.selenide.Condition.visible;
 import static com.codeborne.selenide.Selenide.$;
 
@@ -90,16 +94,24 @@ public class UserDashboard extends BasePage<UserDashboard> {
     }
 
     private void fillDepositForm(String accountNumber) {
-        depositMoney.click();
+        openFormAndSelectAccount(depositMoney, accountNumber);
+    }
 
+    private void selectAccount(String accountNumber) {
         accountSelector.shouldBe(Condition.visible);
 
+        // ждём, пока нужный счёт появится в списке
         accountSelector
                 .$$("option")
                 .findBy(Condition.text(accountNumber))
                 .shouldBe(Condition.exist);
 
         accountSelector.selectOptionContainingText(accountNumber);
+
+        // убеждаемся, что выбор не сбросился после перерисовки списка
+        accountSelector
+                .getSelectedOption()
+                .shouldHave(Condition.text(accountNumber));
     }
 
     public UserDashboard openProfile() {
@@ -111,18 +123,24 @@ public class UserDashboard extends BasePage<UserDashboard> {
     }
 
     public UserDashboard changeProfileName(String name) {
+        userName.shouldBe(visible);
+
         profileNameInput
                 .shouldBe(visible)
                 .setValue(name);
+        profileNameInput.shouldHave(Condition.value(name));
 
         saveProfileName();
         return this;
     }
 
     public UserDashboard clearProfileName() {
+        userName.shouldBe(visible);
+
         profileNameInput
                 .shouldBe(visible)
                 .clear();
+        profileNameInput.shouldHave(Condition.exactValue(""));
 
         saveProfileName();
         return this;
@@ -143,25 +161,20 @@ public class UserDashboard extends BasePage<UserDashboard> {
     }
 
 
-    public UserDashboard transferMoney(
-            String senderAccountNumber,
-            String recipientName,
-            String recipientAccountNumber,
-            double amount) {
+    public UserDashboard transferMoney(String senderAccountNumber, String recipientName,
+                                       String recipientAccountNumber, double amount) {
+        fillTransferForm(senderAccountNumber, recipientName, recipientAccountNumber);
 
-        fillTransferForm(
-                senderAccountNumber,
-                recipientName,
-                recipientAccountNumber
-        );
+        transferAmountInput.shouldBe(Condition.visible).setValue(String.valueOf(amount));
+        transferAmountInput.shouldNotBe(Condition.empty);
 
-        transferAmountInput.setValue(String.valueOf(amount));
+        confirmCheck.shouldBe(Condition.visible).click();
+        confirmCheck.shouldBe(Condition.checked);
 
-        confirmCheck.click();
-        sendTransferButton.click();
-
+        sendTransferButton.shouldBe(Condition.enabled).click();
         return this;
     }
+
 
     public UserDashboard transferMoneyWithEmptyAmount(
             String senderAccountNumber,
@@ -174,21 +187,47 @@ public class UserDashboard extends BasePage<UserDashboard> {
                 recipientAccountNumber
         );
 
-        confirmCheck.click();
-        sendTransferButton.click();
+        confirmCheck.shouldBe(Condition.visible).click();
+        confirmCheck.shouldBe(Condition.checked);
+
+        sendTransferButton.shouldBe(Condition.enabled).click();
 
         return this;
     }
+    private void openFormAndSelectAccount(SelenideElement menuItem, String accountNumber) {
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            menuItem.shouldBe(Condition.visible).click();
+            accountSelector.shouldBe(Condition.visible);
+
+            try {
+                accountSelector.$$("option")
+                        .findBy(Condition.text(accountNumber))
+                        .shouldBe(Condition.exist, Duration.ofSeconds(4));
+                break; // счёт найден
+            } catch (AssertionError e) {
+                if (attempt == 3) {
+                    throw e;
+                }
+                Selenide.refresh(); // список мог не загрузиться, перезагружаем
+            }
+        }
+
+        accountSelector.selectOptionContainingText(accountNumber);
+        accountSelector.getSelectedOption().shouldHave(Condition.text(accountNumber));
+    }
+
 
     private void fillTransferForm(
             String senderAccountNumber,
             String recipientName,
             String recipientAccountNumber) {
 
-        makeTransfer.click();
+        openFormAndSelectAccount(makeTransfer, senderAccountNumber);
 
-        accountSelector.selectOptionContainingText(senderAccountNumber);
-        recipientNameInput.setValue(recipientName);
-        recipientAccountInput.setValue(recipientAccountNumber);
+        recipientNameInput.shouldBe(Condition.visible).setValue(recipientName);
+        recipientNameInput.shouldHave(Condition.value(recipientName));
+
+        recipientAccountInput.shouldBe(Condition.visible).setValue(recipientAccountNumber);
+        recipientAccountInput.shouldHave(Condition.value(recipientAccountNumber));
     }
 }

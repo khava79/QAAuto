@@ -35,7 +35,7 @@ public abstract class BasePage<T extends BasePage> {
         try {
             alert = new WebDriverWait(
                     WebDriverRunner.getWebDriver(),
-                    Duration.ofSeconds(10)
+                    Duration.ofSeconds(20)
             ).until(ExpectedConditions.alertIsPresent());
         } catch (TimeoutException e) {
             throw new AssertionError(

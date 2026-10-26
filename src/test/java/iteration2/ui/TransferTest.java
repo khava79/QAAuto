@@ -25,8 +25,15 @@ public class TransferTest extends BaseUITest {
     public void userCanTransferMoneyTest(double transferAmount) {
         depositMoneyToSenderAccount(transferAmount);
 
-        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(),
-                        transferAmount).checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULLY.format(transferAmount));
+        try {
+            new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(),
+                            receiverAccount.getAccountNumber(), transferAmount)
+                    .checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULLY.format(transferAmount));
+        } catch (AssertionError e) {
+            System.out.println("SENDER=" + userSteps.getAccountByNumber(senderAccount.getAccountNumber()).getBalance()
+                    + " RECEIVER=" + userSteps.getAccountByNumber(receiverAccount.getAccountNumber()).getBalance());
+            throw e;
+        }
 
         CreateAccountResponse actualSenderAccount =
                 userSteps.getAccountByNumber(senderAccount.getAccountNumber());
