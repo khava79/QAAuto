@@ -1,30 +1,32 @@
 package iteration1.ui;
 
-import api.requests.steps.UserSteps;
 import api.models.CreateAccountResponse;
-import api.models.CreateUserRequest;
+import com.codeborne.selenide.Selenide;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.Test;
-import api.requests.steps.AdminSteps;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import ui.pages.BankAlert;
 import ui.pages.UserDashboard;
+
 import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreateAccountTest extends BaseUITest {
     @Test
+    @UserSession
     public void userCanCreateAccountTest() {
-        CreateUserRequest user = AdminSteps.createUser();
-
-        authAsUser(user);
         new UserDashboard().open().createNewAccount();
 
-        List<CreateAccountResponse> createdAccounts = new UserSteps(user.getUsername(), user.getPassword())
-                .getAllAccounts();
+        Selenide.Wait().until(ExpectedConditions.alertIsPresent());
+
+        List<CreateAccountResponse> createdAccounts = SessionStorage.getSteps().getAllAccounts();
 
         assertThat(createdAccounts).hasSize(1);
 
-        new UserDashboard().checkAlertMessageAndAccept(BankAlert.NEW_ACCOUNT_CREATED.getMessage()
-                + createdAccounts.getFirst().getAccountNumber());
+        new UserDashboard().checkAlertMessageAndAccept
+                (BankAlert.NEW_ACCOUNT_CREATED.getMessage() + createdAccounts.getFirst().getAccountNumber());
 
         assertThat(createdAccounts.getFirst().getBalance()).isZero();
     }

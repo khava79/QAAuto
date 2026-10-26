@@ -1,12 +1,19 @@
 package ui.pages;
 
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import com.codeborne.selenide.SelenideElement;
+import api.models.CreateUserRequest;
+import api.specs.RequestSpecs;
+import com.codeborne.selenide.*;
 import org.openqa.selenium.Alert;
+import org.openqa.selenium.TimeoutException;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import ui.elements.BaseElement;
 
-import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.switchTo;
+import java.time.Duration;
+import java.util.List;
+import java.util.function.Function;
+
+import static com.codeborne.selenide.Selenide.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class BasePage<T extends BasePage> {
@@ -22,10 +29,44 @@ public abstract class BasePage<T extends BasePage> {
 
     public <T extends BasePage> T getPage(Class<T> pageClass) { return Selenide.page(pageClass); }
 
-    public T checkAlertMessageAndAccept(String bankAlert) {
-        Alert alert = switchTo().alert();
-        assertThat(alert.getText()).contains(bankAlert);
+    public T checkAlertMessageAndAccept(String expectedMessage) {
+        Alert alert;
+
+        try {
+            alert = new WebDriverWait(
+                    WebDriverRunner.getWebDriver(),
+                    Duration.ofSeconds(20)
+            ).until(ExpectedConditions.alertIsPresent());
+        } catch (TimeoutException e) {
+            throw new AssertionError(
+                    "Не появилось системное окно браузера. "
+                            + "Ожидалось сообщение: " + expectedMessage,
+                    e
+            );
+        }
+
+        String actualMessage = alert.getText();
         alert.accept();
+
+        assertThat(actualMessage)
+                .as("Текст системного окна браузера")
+                .contains(expectedMessage);
+
         return (T) this;
+    }
+
+    public static void authAsUser(String username, String password) {
+        Selenide.open("/");
+        String userAuthHeader = RequestSpecs.getUserAuthHeader(username, password);
+        executeJavaScript("localStorage.setItem('authToken', arguments[0]);", userAuthHeader);
+    }
+
+    public static void authAsUser(CreateUserRequest createUserRequest) {
+        authAsUser(createUserRequest.getUsername(), createUserRequest.getPassword());
+    }
+
+    // ElementCollection -> List<BaseElement>
+    protected <T extends BaseElement> List<T> generatePageElements(ElementsCollection elementsCollection, Function<SelenideElement, T> constructor) {
+        return elementsCollection.stream().map(constructor).toList();
     }
 }

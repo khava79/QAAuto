@@ -6,27 +6,18 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import ui.pages.BankAlert;
 import ui.pages.UserDashboard;
-
 import java.util.stream.Stream;
 
 public class ProfileNameTest extends BaseUITest {
+    private static final String VALID_PROFILE_NAME = "Ivan Ivanov";
+
 
     @Test
     public void userCanChangeProfileNameTest() {
+        new UserDashboard().open().openProfile().changeProfileName(VALID_PROFILE_NAME).checkAlertMessageAndAccept(
+                BankAlert.PROFILE_NAME_UPDATED.getMessage());
 
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .openProfile()
-                .changeProfileName("Ivan Ivanov")
-                .checkAlertMessageAndAccept(
-                        BankAlert.PROFILE_NAME_UPDATED.getMessage()
-                );
-
-        new UserDashboard()
-                .open()
-                .checkProfileName("Ivan Ivanov");
+        new UserDashboard().open().checkProfileName(VALID_PROFILE_NAME);
 
     }
 
@@ -40,37 +31,23 @@ public class ProfileNameTest extends BaseUITest {
         );
     }
 
-    @ParameterizedTest(name = "{1}")
+    @ParameterizedTest(name = "[{index}] invalidName={0}")
     @MethodSource("invalidNames")
     public void userCannotChangeProfileNameToInvalidValueTest(
             String invalidName,
             String testCase) {
 
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .openProfile()
-                .changeProfileName(invalidName)
-                .checkAlertMessageAndAccept(
-                        BankAlert.INVALID_PROFILE_NAME.getMessage()
-                );
+        new UserDashboard().open().openProfile().changeProfileName(invalidName).checkAlertMessageAndAccept(
+                BankAlert.INVALID_PROFILE_NAME.getMessage());
 
     }
 
 
+
     @Test
     public void userCannotChangeProfileNameToEmptyValueTest() {
-
-        authAsUser(user);
-
-        new UserDashboard()
-                .open()
-                .openProfile()
-                .clearProfileName()
-                .checkAlertMessageAndAccept(
-                        BankAlert.INVALID_PROFILE_NAME_EMPTY.getMessage()
-                );
+        new UserDashboard().open().openProfile().clearProfileName().checkAlertMessageAndAccept(
+                BankAlert.INVALID_PROFILE_NAME_EMPTY.getMessage());
 
 
     }
