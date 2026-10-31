@@ -1,14 +1,20 @@
 name: Run tests
 
-# триггер
+# Триггер
 on: [ push, workflow_dispatch ]
 
-jobs: # аналог этапов
+# Права для публикации отчётов в gh-pages
+permissions:
+  contents: write
+
+jobs:
   run-tests:
     name: Set up services (review apps) and run tests
     runs-on: ubuntu-latest
-    steps: # шаги конкретной job
-      - name: Checkout repository # копируем файлы репозитория внутрь CI агента
+
+    steps:
+      # Копируем файлы репозитория внутрь CI-агента
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK
@@ -25,27 +31,33 @@ jobs: # аналог этапов
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # Запускаем backend и PostgreSQL
       - name: Set up services
         run: docker compose -f infra/docker_compose/docker-compose.yml up -d --wait
 
+      # Запускаем тесты
       - name: Run tests
-        run: ./mvnw clean test -q
+        run: mvn -B clean test -q
         env:
           APIBASEURL: http://localhost:4111
           UIBASEURL: http://frontend
           APIVERSION: /api/v1
 
+      # Формируем Swagger coverage
       - name: Run Swagger coverage
         if: always()
         run: .swagger-coverage-commandline/bin/swagger-coverage-commandline -s http://localhost:4111/v3/api-docs -i target/swagger-coverage-output
 
+      # Загружаем историю Allure
       - name: Load test report history
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         if: always()
+        continue-on-error: true
         with:
           ref: gh-pages
           path: gh-pages
 
+      # Формируем Allure-отчёт
       - name: Build test report
         uses: step-security/allure-report-action@v1
         if: always()
@@ -54,10 +66,12 @@ jobs: # аналог этапов
           allure_results: target/allure-results
           allure_history: allure-history
 
+      # Копируем Swagger-отчёт в папку Allure
       - name: Build Swagger coverage report
         if: always()
         run: sudo cp swagger-coverage-report.html allure-history/${{ github.run_number }}
 
+      # Публикуем отчёты в GitHub Pages
       - name: Publish test report
         uses: peaceiris/actions-gh-pages@v3
         if: always()
@@ -66,6 +80,7 @@ jobs: # аналог этапов
           publish_branch: gh-pages
           publish_dir: allure-history
 
+      # Останавливаем контейнеры
       - name: Clean up services
         if: always()
         run: docker compose -f infra/docker_compose/docker-compose.yml down
