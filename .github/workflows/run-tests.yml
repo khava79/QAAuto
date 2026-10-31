@@ -26,7 +26,7 @@ jobs: # аналог этапов
             ${{ runner.os }}-maven-
 
       - name: Set up services
-        run: cd infra/docker_compose && bash restart_docker.sh && cd ../..
+        run: docker compose -f infra/docker_compose/docker-compose.yml up -d --wait
 
       - name: Run tests
         run: ./mvnw clean test -q
@@ -47,7 +47,7 @@ jobs: # аналог этапов
           path: gh-pages
 
       - name: Build test report
-        uses: simple-elf/allure-report-action@v1.7
+        uses: step-security/allure-report-action@v1
         if: always()
         with:
           gh_pages: gh-pages
@@ -68,4 +68,4 @@ jobs: # аналог этапов
 
       - name: Clean up services
         if: always()
-        run: cd infra/docker_compose && docker compose down
+        run: docker compose -f infra/docker_compose/docker-compose.yml down
