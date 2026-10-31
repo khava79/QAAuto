@@ -26,9 +26,9 @@ public class UserSteps {
 
     public List<CreateAccountResponse> getAllAccounts() {
         return new ValidatedCrudRequester<CreateAccountResponse>(
-                RequestSpecs.authAsUser(username, password),
-                ResponseSpecs.requestReturnsOK(),
-                Endpoint.CUSTOMER_ACCOUNTS).getAll(CreateAccountResponse[].class);
+                                RequestSpecs.authAsUser(username, password),
+                    ResponseSpecs.requestReturnsOK(),
+                    Endpoint.CUSTOMER_ACCOUNTS).getAll(CreateAccountResponse[].class);
     }
 
     public CreateAccountResponse getAccountByNumber(String accountNumber) {

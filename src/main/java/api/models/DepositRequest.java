@@ -1,5 +1,7 @@
 package api.models;
 
+// Класс, описывающий запрос
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,7 +14,8 @@ import lombok.NoArgsConstructor;
 @Builder
 
 public class DepositRequest extends BaseModel {
-    private long id;
+    private int id;
     private double balance;
+    private double amount;
 
 }
