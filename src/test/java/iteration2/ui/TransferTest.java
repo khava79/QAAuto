@@ -1,459 +1,179 @@
 package iteration2.ui;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
-import com.codeborne.selenide.Selenide;
-import generators.DepositRequestGenerator;
-import iteration2.api.BaseTest;
-import models.CreateAccountResponse;
-import models.DepositRequest;
-import models.LoginUserRequest;
-import org.junit.jupiter.api.BeforeAll;
+import api.generators.DepositRequestGenerator;
+import api.models.CreateAccountResponse;
+import api.models.DepositRequest;
+import api.requests.steps.UserSteps;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.openqa.selenium.Alert;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
-
-import java.util.Arrays;
-import java.util.Map;
+import ui.pages.BankAlert;
+import ui.pages.UserDashboard;
 import java.util.stream.Stream;
-
-import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.executeJavaScript;
-import static com.codeborne.selenide.Selenide.switchTo;
-import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TransferTest extends BaseTest {
+public class TransferTest extends BaseUITest {
+    private static final double MAX_DEPOSIT_AMOUNT = 5000.0;
+    private static final double INITIAL_BALANCE = 100.0;
+    private static final String NONEXISTENT_ACCOUNT_NUMBER = "ACC999999";
 
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote =
-                "http://localhost:4444/wd/hub";
-
-        Configuration.baseUrl =
-                "http://host.docker.internal:3000";
-
-        Configuration.browser =
-                "chrome";
-
-        Configuration.browserSize =
-                "1920x1080";
-
-        Configuration.browserCapabilities.setCapability(
-                "selenoid:options",
-                Map.of(
-                        "enableVNC", true,
-                        "enableLog", true
-                )
-        );
-    }
-
-    /**
-     * TC-TRANS-01, TC-TRANS-02
-     * Успешный перевод денежных средств.
-     */
+    // TC-TRANS-01, TC-TRANS-02
+    // Позитивные сценарии: 100 и 10000
     @ParameterizedTest
     @MethodSource("validTransferAmounts")
     public void userCanTransferMoneyTest(double transferAmount) {
-
-        // 1. Подготавливаем тестовые данные
         depositMoneyToSenderAccount(transferAmount);
 
-        // 2. Авторизуем пользователя
-        String userAuthHeader = loginUser();
+        try {
+            new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(),
+                            receiverAccount.getAccountNumber(), transferAmount)
+                    .checkAlertMessageAndAccept(BankAlert.TRANSFER_SUCCESSFULLY.format(transferAmount));
+        } catch (AssertionError e) {
+            System.out.println("SENDER=" + userSteps.getAccountByNumber(senderAccount.getAccountNumber()).getBalance()
+                    + " RECEIVER=" + userSteps.getAccountByNumber(receiverAccount.getAccountNumber()).getBalance());
+            throw e;
+        }
 
-        // 3. Открываем страницу перевода
-        openTransferPage(userAuthHeader);
+        CreateAccountResponse actualSenderAccount =
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        // 4. Заполняем форму перевода
-        fillTransferForm(
-                senderAccount.getAccountNumber(),
-                user.getUsername(),
-                receiverAccount.getAccountNumber(),
-                transferAmount
-        );
+        CreateAccountResponse actualReceiverAccount =
+                userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        // 5. Отправляем перевод
-        Alert alert = sendTransfer();
+        assertThat(actualSenderAccount.getBalance()).isZero();
 
-        // 6. Проверяем сообщение
-        String alertText = alert.getText();
-
-        assertThat(alertText)
-                .contains(String.valueOf(transferAmount));
-
-        alert.accept();
-
-        // 7. Проверяем балансы
-        CreateAccountResponse[] accounts = getUserAccounts();
-
-        assertThat(
-                findAccount(
-                        accounts,
-                        senderAccount.getAccountNumber()
-                ).getBalance()
-        ).isEqualTo(0.0);
-
-        assertThat(
-                findAccount(
-                        accounts,
-                        receiverAccount.getAccountNumber()
-                ).getBalance()
-        ).isEqualTo(transferAmount);
+        assertThat(actualReceiverAccount.getBalance()).isEqualTo(transferAmount);
     }
 
-    public static Stream<Arguments> validTransferAmounts() {
+    static Stream<Arguments> validTransferAmounts() {
         return Stream.of(
-                Arguments.of(100.0),
+                Arguments.of(INITIAL_BALANCE),
                 Arguments.of(10000.0)
         );
     }
 
-    /**
-     * TC-TRANS-03, TC-TRANS-06, TC-TRANS-07
-     * Некорректная сумма перевода.
-     */
+
+    // TC-TRANS-03, TC-TRANS-06, TC-TRANS-07
+    // Некорректные суммы
     @ParameterizedTest
     @MethodSource("invalidTransferAmounts")
-    public void userCanNotTransferMoneyWithInvalidAmount(
-            double transferAmount,
-            String expectedMessage) {
+    public void userCanNotTransferMoneyWithInvalidAmount(double transferAmount, String expectedMessage) {
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        // 1. Подготавливаем тестовые данные
-        depositMoneyToSenderAccount(100);
+        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(), transferAmount)
+                .checkAlertMessageAndAccept(expectedMessage);
 
-        // 2. Авторизуем пользователя
-        String userAuthHeader = loginUser();
+        CreateAccountResponse actualSenderAccount =
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        // 3. Открываем страницу перевода
-        openTransferPage(userAuthHeader);
+        CreateAccountResponse actualReceiverAccount =
+                userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        // 4. Заполняем форму
-        fillTransferForm(
-                senderAccount.getAccountNumber(),
-                user.getUsername(),
-                receiverAccount.getAccountNumber(),
-                transferAmount
-        );
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
-        // 5. Отправляем перевод
-        Alert alert = sendTransfer();
-
-        // 6. Проверяем сообщение об ошибке
-        String alertText = alert.getText();
-
-        assertThat(alertText)
-                .isEqualTo(expectedMessage);
-
-        alert.accept();
+        assertThat(actualReceiverAccount.getBalance()).isZero();
     }
 
-    public static Stream<Arguments> invalidTransferAmounts() {
+    static Stream<Arguments> invalidTransferAmounts() {
         return Stream.of(
                 Arguments.of(
                         0.0,
-                        "❌ Error: Transfer amount must be at least 0.01"
+                        BankAlert.TRANSFER_AMOUNT_MUST_BE_AT_LEAST_001.getMessage()
                 ),
                 Arguments.of(
-                        -100.0,
-                        "❌ Error: Transfer amount must be at least 0.01"
+                        -INITIAL_BALANCE,
+                        BankAlert.TRANSFER_AMOUNT_MUST_BE_AT_LEAST_001.getMessage()
                 ),
                 Arguments.of(
                         10000.01,
-                        "❌ Error: Transfer amount cannot exceed 10000"
+                        BankAlert.TRANSFER_AMOUNT_CANNOT_EXCEED_10000.getMessage()
                 )
         );
     }
 
-    /**
-     * TC-TRANS-04
-     * Недостаточно средств на счёте отправителя.
-     */
+
+    // TC-TRANS-04
+    // Недостаточно средств
     @Test
     public void userCanNotTransferMoneyWhenBalanceIsInsufficient() {
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        // 1. Подготавливаем тестовые данные
-        depositMoneyToSenderAccount(100);
+        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber(), INITIAL_BALANCE + 1)
+                .checkAlertMessageAndAccept(BankAlert.INSUFFICIENT_FUNDS.getMessage());
 
-        // 2. Авторизуем пользователя
-        String userAuthHeader = loginUser();
+        CreateAccountResponse actualSenderAccount =
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        // 3. Открываем страницу перевода
-        openTransferPage(userAuthHeader);
+        CreateAccountResponse actualReceiverAccount =
+                userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        // 4. Заполняем форму
-        fillTransferForm(
-                senderAccount.getAccountNumber(),
-                user.getUsername(),
-                receiverAccount.getAccountNumber(),
-                101
-        );
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
-        // 5. Отправляем перевод
-        Alert alert = sendTransfer();
-
-        // 6. Проверяем сообщение об ошибке
-        String alertText = alert.getText();
-
-        assertThat(alertText)
-                .isEqualTo(
-                        "❌ Error: Invalid transfer: insufficient funds or invalid accounts"
-                );
-
-        alert.accept();
+        assertThat(actualReceiverAccount.getBalance()).isZero();
     }
 
-    /**
-     * TC-TRANS-05
-     * Перевод на несуществующий счёт.
-     */
+
+    // TC-TRANS-05
+    // Несуществующий счёт
     @Test
     public void userCanNotTransferMoneyToNonexistentAccount() {
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        // 1. Подготавливаем тестовые данные
-        depositMoneyToSenderAccount(100);
+        new UserDashboard().open().transferMoney(senderAccount.getAccountNumber(), user.getUsername(), NONEXISTENT_ACCOUNT_NUMBER,
+                        INITIAL_BALANCE)
+                .checkAlertMessageAndAccept(BankAlert.NO_USER_FOUND_WITH_THIS_ACCOUNT_NUMBER.getMessage());
 
-        // 2. Авторизуем пользователя
-        String userAuthHeader = loginUser();
+        CreateAccountResponse actualSenderAccount =
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        // 3. Открываем страницу перевода
-        openTransferPage(userAuthHeader);
-
-        // 4. Заполняем форму
-        $(Selectors.byText("🔄 Make a Transfer"))
-                .click();
-
-        $(".account-selector")
-                .selectOptionContainingText(
-                        senderAccount.getAccountNumber()
-                );
-
-        $("input[placeholder='Enter recipient name']")
-                .setValue(user.getUsername());
-
-        $("input[placeholder='Enter recipient account number']")
-                .setValue("ACC999999");
-
-        $("input[placeholder='Enter amount']")
-                .setValue("100");
-
-        // 5. Отправляем перевод
-        $("#confirmCheck")
-                .click();
-
-        $(Selectors.byText("🚀 Send Transfer"))
-                .click();
-
-        // 6. Проверяем сообщение об ошибке
-        Alert alert = switchTo().alert();
-
-        String alertText = alert.getText();
-
-        assertThat(alertText)
-                .isEqualTo(
-                        "❌ No user found with this account number."
-                );
-
-        alert.accept();
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
     }
 
-    /**
-     * TC-TRANS-08
-     * Перевод без указания суммы.
-     */
+
+    // TC-TRANS-08
+    // Пустая сумма
     @Test
     public void userCanNotTransferMoneyWithEmptyAmount() {
+        depositMoneyToSenderAccount(INITIAL_BALANCE);
 
-        // 1. Подготавливаем тестовые данные
-        depositMoneyToSenderAccount(100);
+        new UserDashboard().open().transferMoneyWithEmptyAmount(senderAccount.getAccountNumber(), user.getUsername(), receiverAccount.getAccountNumber())
+                .checkAlertMessageAndAccept(BankAlert.INVALID_TRANSFER_AMOUNT.getMessage());
 
-        // 2. Авторизуем пользователя
-        String userAuthHeader = loginUser();
+        CreateAccountResponse actualSenderAccount =
+                userSteps.getAccountByNumber(senderAccount.getAccountNumber());
 
-        // 3. Открываем страницу перевода
-        openTransferPage(userAuthHeader);
+        CreateAccountResponse actualReceiverAccount =
+                userSteps.getAccountByNumber(receiverAccount.getAccountNumber());
 
-        // 4. Заполняем форму без указания суммы
-        $(Selectors.byText("🔄 Make a Transfer"))
-                .click();
+        assertThat(actualSenderAccount.getBalance()).isEqualTo(INITIAL_BALANCE);
 
-        $(".account-selector")
-                .selectOptionContainingText(
-                        senderAccount.getAccountNumber()
-                );
-
-        $("input[placeholder='Enter recipient name']")
-                .setValue(user.getUsername());
-
-        $("input[placeholder='Enter recipient account number']")
-                .setValue(receiverAccount.getAccountNumber());
-
-        // 5. Пытаемся отправить перевод
-        $("#confirmCheck")
-                .click();
-
-        $(Selectors.byText("🚀 Send Transfer"))
-                .click();
-
-        // 6. Проверяем, что перевод не произошёл
-        CreateAccountResponse[] accounts =
-                getUserAccounts();
-
-        CreateAccountResponse sender =
-                findAccount(
-                        accounts,
-                        senderAccount.getAccountNumber()
-                );
-
-        CreateAccountResponse receiver =
-                findAccount(
-                        accounts,
-                        receiverAccount.getAccountNumber()
-                );
-
-        assertThat(sender.getBalance())
-                .isEqualTo(100.0);
-
-        assertThat(receiver.getBalance())
-                .isEqualTo(0.0);
+        assertThat(actualReceiverAccount.getBalance()).isZero();
     }
 
-    private String loginUser() {
-        return new CrudRequester(
-                RequestSpecs.unauthSpec(),
-                ResponseSpecs.requestReturnsOK(),
-                Endpoint.LOGIN
-        )
-                .post(
-                        LoginUserRequest.builder()
-                                .username(user.getUsername())
-                                .password(user.getPassword())
-                                .build()
-                )
-                .extract()
-                .header("Authorization");
-    }
 
-    private void openTransferPage(String userAuthHeader) {
-        Selenide.open("/");
-
-        executeJavaScript(
-                "localStorage.setItem('authToken', arguments[0]);",
-                userAuthHeader
-        );
-
-        Selenide.open("/dashboard");
-    }
-
-    private void fillTransferForm(
-            String senderAccountNumber,
-            String recipientName,
-            String recipientAccountNumber,
-            double amount) {
-
-        $(Selectors.byText("🔄 Make a Transfer"))
-                .click();
-
-        $(".account-selector")
-                .selectOptionContainingText(
-                        senderAccountNumber
-                );
-
-        $("input[placeholder='Enter recipient name']")
-                .setValue(recipientName);
-
-        $("input[placeholder='Enter recipient account number']")
-                .setValue(recipientAccountNumber);
-
-        $("input[placeholder='Enter amount']")
-                .setValue(String.valueOf(amount));
-    }
-
-    private Alert sendTransfer() {
-        $("#confirmCheck")
-                .click();
-
-        $(Selectors.byText("🚀 Send Transfer"))
-                .click();
-
-        return switchTo().alert();
-    }
-
-    private CreateAccountResponse[] getUserAccounts() {
-        return given()
-                .spec(
-                        RequestSpecs.authAsUser(
-                                user.getUsername(),
-                                user.getPassword()
-                        )
-                )
-                .get(
-                        "http://localhost:4111/api/v1/customer/accounts"
-                )
-                .then()
-                .statusCode(200)
-                .extract()
-                .as(CreateAccountResponse[].class);
-    }
 
     private void depositMoneyToSenderAccount(double amount) {
-
-        if (amount <= 5000) {
-
-            DepositRequest depositRequest =
-                    DepositRequestGenerator.generate(
-                            senderAccount.getId(),
-                            amount
-                    );
-
-            UserSteps.deposit(
-                    userSpec,
-                    depositRequest
-            );
-
-        } else {
-
-            DepositRequest firstDeposit =
-                    DepositRequestGenerator.generate(
-                            senderAccount.getId(),
-                            5000
-                    );
-
-            UserSteps.deposit(
-                    userSpec,
-                    firstDeposit
-            );
-
-            DepositRequest secondDeposit =
-                    DepositRequestGenerator.generate(
-                            senderAccount.getId(),
-                            amount - 5000
-                    );
-
-            UserSteps.deposit(
-                    userSpec,
-                    secondDeposit
-            );
+        if (amount <= MAX_DEPOSIT_AMOUNT) {
+            deposit(amount);
+            return;
         }
+
+        deposit(MAX_DEPOSIT_AMOUNT);
+        deposit(amount - MAX_DEPOSIT_AMOUNT);
     }
 
-    private CreateAccountResponse findAccount(
-            CreateAccountResponse[] accounts,
-            String accountNumber) {
 
-        return Arrays.stream(accounts)
-                .filter(account ->
-                        account.getAccountNumber()
-                                .equals(accountNumber)
-                )
-                .findFirst()
-                .orElseThrow();
+    private void deposit(double amount) {
+        DepositRequest depositRequest =
+                DepositRequestGenerator.generate(
+                        senderAccount.getId(),
+                        amount
+                );
+
+        UserSteps.deposit(
+                userSpec,
+                depositRequest
+        );
     }
 }
