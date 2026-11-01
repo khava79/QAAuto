@@ -41,9 +41,7 @@ jobs: # аналог этапов
 
       - name: Run tests
         # -Papi: только API-тесты (в docker-compose пока нет frontend для UI-тестов)
-        run: |
-          chmod +x mvnw
-          ./mvnw clean test -q -Papi
+        run: mvn clean test -q -Papi
         env:
           APIBASEURL: http://localhost:4111
           UIBASEURL: http://frontend
