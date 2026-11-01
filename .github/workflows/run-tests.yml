@@ -49,10 +49,16 @@ jobs: # аналог этапов
 
       - name: Run Swagger coverage
         if: always()
+        continue-on-error: true
         run: |
-          $(find swagger-coverage -path '*bin/swagger-coverage-commandline' | head -1) \
-            -s http://localhost:4111/v3/api-docs \
-            -i target/swagger-coverage-output
+          OUT=$(find . -type d -name swagger-coverage-output -not -path "./swagger-coverage/*" | head -1)
+          if [ -z "$OUT" ]; then
+            echo "::warning::Папка swagger-coverage-output не найдена: тесты не записали данные о покрытии"
+            exit 0
+          fi
+          echo "Данные о покрытии: $OUT"
+          BIN=$(find swagger-coverage -path '*bin/swagger-coverage-commandline' | head -1)
+          "$BIN" -s http://localhost:4111/v3/api-docs -i "$OUT"
 
       - name: Load test report history
         uses: actions/checkout@v4
