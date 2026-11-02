@@ -18,6 +18,8 @@ public class DepositResponse extends BaseModel {
     private String accountNumber;
     private double balance;
     private List<Transaction> transactions;
+    private double depositAmount;
+    private Long transactionId;
 
     @Data
     @AllArgsConstructor
