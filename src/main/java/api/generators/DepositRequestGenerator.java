@@ -8,15 +8,15 @@ public class DepositRequestGenerator {
 
     public static DepositRequest generate(int accountId) {
         return DepositRequest.builder()
-                .id(accountId)
-                .balance(roundToCents(RandomData.getBalance()))
+                .accountId(accountId)
+                .amount(roundToCents(RandomData.getBalance()))
                 .build();
     }
 
     public static DepositRequest generate(int accountId, double balance) {
         return DepositRequest.builder()
-                .id(accountId)
-                .balance(balance)
+                .accountId(accountId)
+                .amount(balance)
                 .build();
     }
 

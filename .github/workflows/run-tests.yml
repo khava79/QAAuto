@@ -33,6 +33,26 @@ jobs: # аналог этапов
         working-directory: infra/docker_compose
         run: bash restart_docker.sh
 
+      - name: Wait for services
+        run: |
+          docker ps -a
+          for i in $(seq 1 30); do
+            if docker exec nbank-postgres pg_isready -U postgres; then break; fi
+            sleep 2
+          done
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4111/v3/api-docs > /dev/null; then break; fi
+            sleep 2
+          done
+          docker logs nbank-postgres --tail 30
+
+      - name: Debug database
+        run: |
+          docker ps -a
+          (ss -ltn | grep 5432) || echo "port 5432 is NOT listening"
+          docker logs nbank-postgres --tail 50
+          docker exec nbank-postgres psql -U postgres -d nbank -c '\dt' || true
+
       - name: Download swagger-coverage-commandline
         run: |
           wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip
@@ -53,41 +73,4 @@ jobs: # аналог этапов
         run: |
           OUT=$(find . -type d -name swagger-coverage-output -not -path "./swagger-coverage/*" | head -1)
           if [ -z "$OUT" ]; then
-            echo "::warning::Папка swagger-coverage-output не найдена: тесты не записали данные о покрытии"
-            exit 0
-          fi
-          echo "Данные о покрытии: $OUT"
-          BIN=$(find swagger-coverage -path '*bin/swagger-coverage-commandline' | head -1)
-          "$BIN" -s http://localhost:4111/v3/api-docs -i "$OUT"
-
-      - name: Load test report history
-        uses: actions/checkout@v4
-        if: always()
-        with:
-          ref: gh-pages
-          path: gh-pages
-
-      - name: Build test report
-        uses: step-security/allure-report-action@v1.13.2
-        if: always()
-        with:
-          gh_pages: gh-pages
-          allure_results: target/allure-results
-          allure_history: allure-history
-
-      - name: Build Swagger coverage report
-        if: always() && hashFiles('swagger-coverage-report.html') != ''
-        run: sudo cp swagger-coverage-report.html allure-history/${{ github.run_number }}
-
-      - name: Publish test report
-        uses: peaceiris/actions-gh-pages@v4
-        if: always() && hashFiles('allure-history/**') != ''
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_branch: gh-pages
-          publish_dir: allure-history
-
-      - name: Clean up services
-        if: always()
-        working-directory: infra/docker_compose
-        run: docker compose down
+            echo "::warning::Папка swagger-coverage-output не найдена: тесты не записали данные о
