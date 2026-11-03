@@ -3,8 +3,9 @@ name: Run tests
 # триггер
 on: [ push, workflow_dispatch ]
 
+# права на запись нужны, чтобы пушить отчёт в ветку gh-pages
 permissions:
-  contents: write # нужно, чтобы публиковать отчёты в gh-pages
+  contents: write
 
 jobs: # аналог этапов
   run-tests:
@@ -28,22 +29,19 @@ jobs: # аналог этапов
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Install Swagger Coverage
-        run: |
-          wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip -O swagger-coverage.zip
-          unzip -q swagger-coverage.zip -d swagger-coverage-tmp
-          BIN=$(find swagger-coverage-tmp -type f -name swagger-coverage-commandline -path '*/bin/*' | head -n 1)
-          SRC=$(dirname "$(dirname "$BIN")")
-          mkdir -p .swagger-coverage-commandline
-          cp -r "$SRC"/. .swagger-coverage-commandline/
-          chmod +x .swagger-coverage-commandline/bin/swagger-coverage-commandline
-          rm -rf swagger-coverage-tmp swagger-coverage.zip
-
       - name: Set up services
-        run: cd infra/docker_compose && bash restart_docker.sh && cd ../..
+        working-directory: infra/docker_compose
+        run: bash restart_docker.sh
+
+      - name: Download swagger-coverage-commandline
+        run: |
+          wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip
+          unzip -q swagger-coverage-1.5.0.zip -d swagger-coverage
+          chmod +x $(find swagger-coverage -path '*bin/swagger-coverage-commandline')
 
       - name: Run tests
-        run: mvn clean test -q
+        # -Papi: только API-тесты (в docker-compose пока нет frontend для UI-тестов)
+        run: mvn clean test -q -Papi
         env:
           APIBASEURL: http://localhost:4111
           UIBASEURL: http://frontend
@@ -51,70 +49,39 @@ jobs: # аналог этапов
 
       - name: Run Swagger coverage
         if: always()
-        run: .swagger-coverage-commandline/bin/swagger-coverage-commandline -s http://localhost:4111/v3/api-docs -i target/swagger-coverage-output
+        continue-on-error: true
+        run: |
+          OUT=$(find . -type d -name swagger-coverage-output -not -path "./swagger-coverage/*" | head -1)
+          if [ -z "$OUT" ]; then
+            echo "::warning::Папка swagger-coverage-output не найдена: тесты не записали данные о покрытии"
+            exit 0
+          fi
+          echo "Данные о покрытии: $OUT"
+          BIN=$(find swagger-coverage -path '*bin/swagger-coverage-commandline' | head -1)
+          "$BIN" -s http://localhost:4111/v3/api-docs -i "$OUT"
 
       - name: Load test report history
         uses: actions/checkout@v4
         if: always()
-        continue-on-error: true # если ветки gh-pages ещё нет
         with:
           ref: gh-pages
           path: gh-pages
 
-      - name: Install Allure CLI
-        if: always()
-        run: |
-          wget -q https://github.com/allure-framework/allure2/releases/download/2.24.0/allure-2.24.0.tgz
-          sudo tar -xzf allure-2.24.0.tgz -C /opt
-          sudo ln -sf /opt/allure-2.24.0/bin/allure /usr/local/bin/allure
-
       - name: Build test report
+        uses: step-security/allure-report-action@v1.13.2
         if: always()
-        run: |
-          mkdir -p allure-history target/allure-results
-
-          # переносим старые отчёты из gh-pages
-          if [ -d gh-pages ]; then
-            cp -r gh-pages/. allure-history/
-            rm -rf allure-history/.git
-          fi
-
-          # подтягиваем историю прошлого прогона
-          if [ -d allure-history/last-history ]; then
-            mkdir -p target/allure-results/history
-            cp -r allure-history/last-history/. target/allure-results/history/
-          fi
-
-          # генерируем новый отчёт
-          allure generate target/allure-results --clean -o allure-report
-
-          # кладём отчёт в папку с номером запуска
-          mkdir -p allure-history/${{ github.run_number }}
-          cp -r allure-report/. allure-history/${{ github.run_number }}/
-
-          # сохраняем историю для следующего прогона
-          rm -rf allure-history/last-history
-          mkdir -p allure-history/last-history
-          cp -r allure-report/history/. allure-history/last-history/
-
-          # главная страница ведёт на последний отчёт
-          echo '<meta http-equiv="refresh" content="0; url=${{ github.run_number }}/index.html">' > allure-history/index.html
-
-          # храним только 20 последних отчётов
-          ls -1 allure-history | grep -E '^[0-9]+$' | sort -n | head -n -20 | xargs -r -I{} rm -rf allure-history/{}
+        with:
+          gh_pages: gh-pages
+          allure_results: target/allure-results
+          allure_history: allure-history
 
       - name: Build Swagger coverage report
-        if: always()
-        run: |
-          if [ -f swagger-coverage-report.html ]; then
-            cp swagger-coverage-report.html allure-history/${{ github.run_number }}/
-          else
-            echo "swagger-coverage-report.html not found, skipping"
-          fi
+        if: always() && hashFiles('swagger-coverage-report.html') != ''
+        run: sudo cp swagger-coverage-report.html allure-history/${{ github.run_number }}
 
       - name: Publish test report
-        uses: peaceiris/actions-gh-pages@v3
-        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        if: always() && hashFiles('allure-history/**') != ''
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
@@ -122,4 +89,5 @@ jobs: # аналог этапов
 
       - name: Clean up services
         if: always()
-        run: cd "$GITHUB_WORKSPACE/infra/docker_compose" && docker compose down
+        working-directory: infra/docker_compose
+        run: docker compose down
