@@ -33,6 +33,19 @@ jobs: # аналог этапов
         working-directory: infra/docker_compose
         run: bash restart_docker.sh
 
+      - name: Wait for services
+        run: |
+          docker ps -a
+          for i in $(seq 1 30); do
+            if docker exec nbank-postgres pg_isready -U postgres; then break; fi
+            sleep 2
+          done
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:4111/v3/api-docs > /dev/null; then break; fi
+            sleep 2
+          done
+          docker logs nbank-postgres --tail 30
+
       - name: Download swagger-coverage-commandline
         run: |
           wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip

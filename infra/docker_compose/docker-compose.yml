@@ -19,6 +19,8 @@ services:
   nbank:
     image: nobugsme/nbank:with_fraud_check_with_transfer_fix
     container_name: nbank-app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "4111:4111"
     environment:
