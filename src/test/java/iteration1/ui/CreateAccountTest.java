@@ -1,103 +1,33 @@
 package iteration1.ui;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selectors;
+import api.models.CreateAccountResponse;
 import com.codeborne.selenide.Selenide;
-import models.CreateAccountResponse;
-import models.CreateUserRequest;
-import models.LoginUserRequest;
-import org.junit.jupiter.api.BeforeAll;
+import common.annotations.UserSession;
+import common.storage.SessionStorage;
 import org.junit.jupiter.api.Test;
-import org.openqa.selenium.Alert;
-import requests.skelethon.Endpoint;
-import requests.skelethon.requesters.CrudRequester;
-import requests.steps.AdminSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import ui.pages.BankAlert;
+import ui.pages.UserDashboard;
 
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
 
-import static com.codeborne.selenide.Selenide.*;
-import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class CreateAccountTest {
-    @BeforeAll
-    public static void setupSelenoid() {
-        Configuration.remote = "http://localhost:4444/wd/hub";
-        Configuration.baseUrl = "http://host.docker.internal:3000";
-        Configuration.browser = "chrome";
-        Configuration.browserSize = "1920x1080";
-
-        Configuration.browserCapabilities.setCapability("selenoid:options",
-                Map.of("enableVNC", true, "enableLog", true)
-        );
-    }
-
+public class CreateAccountTest extends BaseUITest {
     @Test
+    @UserSession
     public void userCanCreateAccountTest() {
-        // ШАГИ ПО НАСТРОЙКЕ ОКРУЖЕНИЯ
+        new UserDashboard().open().createNewAccount();
 
-        // ШАГ 1: админ логинится в банке
-        CreateUserRequest user = AdminSteps.createUser();
+        Selenide.Wait().until(ExpectedConditions.alertIsPresent());
 
-        // ШАГ 2: админ создает юзера
-        String userAuthHeader = new CrudRequester(
-                        RequestSpecs.unauthSpec(),
-                ResponseSpecs.requestReturnsOK(),
-                Endpoint.LOGIN)
-                .post(LoginUserRequest.builder().username(user.getUsername()).password(user.getPassword()).build())
-                .extract()
-                .header("Authorization");
+        List<CreateAccountResponse> createdAccounts = SessionStorage.getSteps().getAllAccounts();
 
-        // ШАГ 3: юзер логинится в банке
-        Selenide.open("/");
+        assertThat(createdAccounts).hasSize(1);
 
-        executeJavaScript(
-                "localStorage.setItem('authToken', arguments[0]);",
-                userAuthHeader
-        );
+        new UserDashboard().checkAlertMessageAndAccept
+                (BankAlert.NEW_ACCOUNT_CREATED.getMessage() + createdAccounts.getFirst().getAccountNumber());
 
-        Selenide.open("/dashboard");
-
-        System.out.println("CURRENT URL: " + Selenide.webdriver().driver().url());
-        System.out.println("PAGE TITLE: " + title());
-        System.out.println("PAGE TEXT: " + $("body").getText());
-
-        $(Selectors.byText("➕ Create New Account")).click();
-
-
-        // ШАГ 5: проверка, что аккаунт создался на UI
-
-        Alert alert = switchTo().alert();
-        String alertText = alert.getText();
-
-        assertThat(alertText).contains("✅ New Account Created! Account Number:");
-
-        alert.accept();
-
-        Pattern pattern = Pattern.compile("Account Number: (\\w+)");
-        Matcher matcher = pattern.matcher(alertText);
-
-        matcher.find();
-
-        String createdAccNumber = matcher.group(1);
-
-        // ШАГ 6: проверка, что аккаунт был создан на API
-
-        CreateAccountResponse[] existingUserAccounts = given()
-                .spec(RequestSpecs.authAsUser(user.getUsername(), user.getPassword()))
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then().assertThat()
-                .extract().as(CreateAccountResponse[].class);
-
-        assertThat(existingUserAccounts).hasSize(1);
-
-        CreateAccountResponse createdAccount = existingUserAccounts[0];
-
-        assertThat(createdAccount).isNotNull();
-        assertThat(createdAccount.getBalance()).isZero();
+        assertThat(createdAccounts.getFirst().getBalance()).isZero();
     }
 }
