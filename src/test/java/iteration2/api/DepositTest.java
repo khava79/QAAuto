@@ -52,7 +52,7 @@ public class DepositTest extends BaseTest {
                 .match();
 
         assertEquals(
-                before.getBalance() + depositRequest.getBalance(),
+                before.getBalance() + depositRequest.getAmount(),
                 accountDao.getBalance(),
                 DELTA
         );
@@ -97,7 +97,7 @@ public class DepositTest extends BaseTest {
                 .match();
 
         assertEquals(
-                before.getBalance() + depositRequest.getBalance(),
+                before.getBalance() + depositRequest.getAmount(),
                 accountDao.getBalance(),
                 DELTA
         );
