@@ -2,6 +2,7 @@ package api.specs;
 
 
 import api.configs.Config;
+import com.github.viclovsky.swagger.coverage.SwaggerCoverageRestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
@@ -18,14 +19,16 @@ import java.util.Map;
 public class RequestSpecs {
     private static Map<String, String> authHeaders = new HashMap<>(Map.of("admin", "Basic YWRtaW46YWRtaW4="));
 
-    private RequestSpecs(){}
+    private RequestSpecs() {
+    }
 
     private static RequestSpecBuilder defaultRequestBuilder() {
         return new RequestSpecBuilder()
                 .setContentType(ContentType.JSON)
                 .setAccept(ContentType.JSON)
-                .addFilters( List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()))
+                .addFilters(List.of(new RequestLoggingFilter(),
+                        new ResponseLoggingFilter(),
+                        new SwaggerCoverageRestAssured()))
                 .setBaseUri(Config.getProperty("apiBaseUrl") + Config.getProperty("apiVersion"));
     }
 
@@ -50,7 +53,7 @@ public class RequestSpecs {
 
         if (!authHeaders.containsKey(username)) {
             userAuthHeader = new CrudRequester(
-                                RequestSpecs.unauthSpec(),
+                    RequestSpecs.unauthSpec(),
                     ResponseSpecs.requestReturnsOK(),
                     Endpoint.LOGIN)
                     .post(LoginUserRequest.builder().username(username).password(password).build())

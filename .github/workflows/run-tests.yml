@@ -1,0 +1,93 @@
+name: Run tests
+
+# триггер
+on: [ push, workflow_dispatch ]
+
+# права на запись нужны, чтобы пушить отчёт в ветку gh-pages
+permissions:
+  contents: write
+
+jobs: # аналог этапов
+  run-tests:
+    name: Set up services (review apps) and run tests
+    runs-on: ubuntu-latest
+    steps: # шаги конкретной job
+      - name: Checkout repository # копируем файлы репозитория внутрь CI агента
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '21'
+
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up services
+        working-directory: infra/docker_compose
+        run: bash restart_docker.sh
+
+      - name: Download swagger-coverage-commandline
+        run: |
+          wget -q https://github.com/viclovsky/swagger-coverage/releases/download/1.5.0/swagger-coverage-1.5.0.zip
+          unzip -q swagger-coverage-1.5.0.zip -d swagger-coverage
+          chmod +x $(find swagger-coverage -path '*bin/swagger-coverage-commandline')
+
+      - name: Run tests
+        # -Papi: только API-тесты (в docker-compose пока нет frontend для UI-тестов)
+        run: mvn clean test -q -Papi
+        env:
+          APIBASEURL: http://localhost:4111
+          UIBASEURL: http://frontend
+          APIVERSION: /api/v1
+
+      - name: Run Swagger coverage
+        if: always()
+        continue-on-error: true
+        run: |
+          OUT=$(find . -type d -name swagger-coverage-output -not -path "./swagger-coverage/*" | head -1)
+          if [ -z "$OUT" ]; then
+            echo "::warning::Папка swagger-coverage-output не найдена: тесты не записали данные о покрытии"
+            exit 0
+          fi
+          echo "Данные о покрытии: $OUT"
+          BIN=$(find swagger-coverage -path '*bin/swagger-coverage-commandline' | head -1)
+          "$BIN" -s http://localhost:4111/v3/api-docs -i "$OUT"
+
+      - name: Load test report history
+        uses: actions/checkout@v4
+        if: always()
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Build test report
+        uses: step-security/allure-report-action@v1.13.2
+        if: always()
+        with:
+          gh_pages: gh-pages
+          allure_results: target/allure-results
+          allure_history: allure-history
+
+      - name: Build Swagger coverage report
+        if: always() && hashFiles('swagger-coverage-report.html') != ''
+        run: sudo cp swagger-coverage-report.html allure-history/${{ github.run_number }}
+
+      - name: Publish test report
+        uses: peaceiris/actions-gh-pages@v4
+        if: always() && hashFiles('allure-history/**') != ''
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-history
+
+      - name: Clean up services
+        if: always()
+        working-directory: infra/docker_compose
+        run: docker compose down

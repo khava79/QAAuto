@@ -4,7 +4,8 @@ import api.models.ProfileNameRequest;
 
 public class ProfileNameRequestGenerator {
 
-    private ProfileNameRequestGenerator() {}
+    private ProfileNameRequestGenerator() {
+    }
 
     public static ProfileNameRequest generate() {
         return RandomModelGenerator.generate(ProfileNameRequest.class);

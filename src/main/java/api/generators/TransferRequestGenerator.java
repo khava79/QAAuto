@@ -3,7 +3,8 @@ package api.generators;
 import api.models.TransferRequest;
 
 public class TransferRequestGenerator {
-    private TransferRequestGenerator() {}
+    private TransferRequestGenerator() {
+    }
 
     public static TransferRequest generate(int senderId,
                                            int receiverId,
