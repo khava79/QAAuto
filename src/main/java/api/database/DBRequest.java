@@ -1,71 +1,125 @@
 package api.database;
 
 import api.configs.Config;
-import lombok.Builder;
-import lombok.Data;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
-@Data
-@Builder
+/**
+ * Единый клиент для работы с БД.
+ * Поддерживает только те типы запросов, которые реально реализованы: SELECT и UPDATE.
+ */
 public class DBRequest {
-    private RequestType requestType;
-    private String table;
-    private List<Condition> conditions;
-    private Class<?> extractAsClass;
 
     public enum RequestType {
-        SELECT, INSERT, UPDATE, DELETE
+        SELECT, UPDATE
     }
 
+    private final RequestType requestType;
+    private final String table;
+    private final List<Condition> conditions;
+    private final Map<String, Object> values;
+
+    private DBRequest(DBRequestBuilder builder) {
+        this.requestType = builder.requestType;
+        this.table = builder.table;
+        this.conditions = builder.conditions;
+        this.values = builder.values;
+    }
+
+    public static DBRequestBuilder builder() {
+        return new DBRequestBuilder();
+    }
+
+    /** Выполняет SELECT и маппит первую строку результата в объект. */
     public <T> T extractAs(Class<T> clazz) {
-        this.extractAsClass = clazz;
-        return executeQuery(clazz);
-    }
+        requireType(RequestType.SELECT);
 
-    private <T> T executeQuery(Class<T> clazz) {
-        String sql = buildSQL();
-
+        String sql = "SELECT * FROM " + table + buildWhere();
         try (Connection connection = getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
 
-            // Set parameters for conditions
-            if (conditions != null) {
-                for (int i = 0; i < conditions.size(); i++) {
-                    statement.setObject(i + 1, conditions.get(i).getValue());
-                }
-            }
+            bind(statement, conditionValues());
 
             try (ResultSet resultSet = statement.executeQuery()) {
                 return ResultSetMapper.mapOne(resultSet, clazz);
             }
         } catch (SQLException e) {
-            throw new RuntimeException("Database query failed", e);
+            throw new RuntimeException("Database select failed: " + sql, e);
         }
     }
 
+    /** Выполняет UPDATE и возвращает количество затронутых строк. */
+    public int execute() {
+        requireType(RequestType.UPDATE);
 
-    private String buildSQL() {
-        StringBuilder sql = new StringBuilder();
-
-        switch (requestType) {
-            case SELECT:
-                sql.append("SELECT * FROM ").append(table);
-                if (conditions != null && !conditions.isEmpty()) {
-                    sql.append(" WHERE ");
-                    for (int i = 0; i < conditions.size(); i++) {
-                        if (i > 0) sql.append(" AND ");
-                        sql.append(conditions.get(i).getColumn()).append(" ").append(conditions.get(i).getOperator()).append(" ?");
-                    }
-                }
-                break;
-            default:
-                throw new UnsupportedOperationException("Request type " + requestType + " not implemented");
+        if (values.isEmpty()) {
+            throw new IllegalStateException("UPDATE requires at least one value, use set(column, value)");
+        }
+        if (conditions.isEmpty()) {
+            throw new IllegalStateException("UPDATE without conditions is not allowed");
         }
 
-        return sql.toString();
+        StringBuilder sql = new StringBuilder("UPDATE ").append(table).append(" SET ");
+        List<Object> params = new ArrayList<>();
+        int i = 0;
+        for (Map.Entry<String, Object> entry : values.entrySet()) {
+            if (i++ > 0) sql.append(", ");
+            sql.append(entry.getKey()).append(" = ?");
+            params.add(entry.getValue());
+        }
+        sql.append(buildWhere());
+        params.addAll(conditionValues());
+
+        try (Connection connection = getConnection();
+             PreparedStatement statement = connection.prepareStatement(sql.toString())) {
+
+            bind(statement, params);
+            return statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Database update failed: " + sql, e);
+        }
+    }
+
+    private void requireType(RequestType expected) {
+        if (requestType != expected) {
+            throw new IllegalStateException(
+                    "Request type is " + requestType + ", but this method requires " + expected);
+        }
+    }
+
+    private String buildWhere() {
+        if (conditions.isEmpty()) {
+            return "";
+        }
+        StringBuilder where = new StringBuilder(" WHERE ");
+        for (int i = 0; i < conditions.size(); i++) {
+            if (i > 0) where.append(" AND ");
+            Condition c = conditions.get(i);
+            where.append(c.getColumn()).append(" ").append(c.getOperator()).append(" ?");
+        }
+        return where.toString();
+    }
+
+    private List<Object> conditionValues() {
+        List<Object> params = new ArrayList<>();
+        for (Condition c : conditions) {
+            params.add(c.getValue());
+        }
+        return params;
+    }
+
+    private void bind(PreparedStatement statement, List<Object> params) throws SQLException {
+        for (int i = 0; i < params.size(); i++) {
+            statement.setObject(i + 1, params.get(i));
+        }
     }
 
     private Connection getConnection() throws SQLException {
@@ -76,23 +130,14 @@ public class DBRequest {
         );
     }
 
-    public static DBRequestBuilder builder() {
-        return new DBRequestBuilder();
-    }
-
     public static class DBRequestBuilder {
         private RequestType requestType;
         private String table;
-        private List<Condition> conditions = new ArrayList<>();
-        private Class<?> extractAsClass;
+        private final List<Condition> conditions = new ArrayList<>();
+        private final Map<String, Object> values = new LinkedHashMap<>();
 
         public DBRequestBuilder requestType(RequestType requestType) {
             this.requestType = requestType;
-            return this;
-        }
-
-        public DBRequestBuilder where(Condition condition) {
-            this.conditions.add(condition);
             return this;
         }
 
@@ -101,15 +146,33 @@ public class DBRequest {
             return this;
         }
 
+        public DBRequestBuilder where(Condition condition) {
+            this.conditions.add(condition);
+            return this;
+        }
+
+        /** Колонка и новое значение для UPDATE. */
+        public DBRequestBuilder set(String column, Object value) {
+            this.values.put(column, value);
+            return this;
+        }
+
+        public DBRequest build() {
+            if (requestType == null) {
+                throw new IllegalStateException("requestType is required");
+            }
+            if (table == null || table.isBlank()) {
+                throw new IllegalStateException("table is required");
+            }
+            return new DBRequest(this);
+        }
+
         public <T> T extractAs(Class<T> clazz) {
-            this.extractAsClass = clazz;
-            DBRequest request = DBRequest.builder()
-                    .requestType(requestType)
-                    .table(table)
-                    .conditions(conditions)
-                    .extractAsClass(extractAsClass)
-                    .build();
-            return request.extractAs(clazz);
+            return build().extractAs(clazz);
+        }
+
+        public int execute() {
+            return build().execute();
         }
     }
 }

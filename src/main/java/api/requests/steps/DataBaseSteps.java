@@ -1,34 +1,26 @@
 package api.requests.steps;
 
+import api.dao.AccountDao;
+import api.dao.UserDao;
 import api.database.Condition;
 import api.database.DBRequest;
-import api.dao.UserDao;
-import api.dao.AccountDao;
-import api.configs.Config;
 import common.helpers.StepLogger;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 public class DataBaseSteps {
     public enum Table {
         CUSTOMERS("customers"),
         ACCOUNTS("accounts");
 
+        private final String name;
+
         Table(String name) {
             this.name = name;
-
         }
-
-        private String name;
 
         public String getName() {
             return name;
         }
     }
-
 
     public static UserDao getUserByUsername(String username) {
         return StepLogger.log("Get user from database by username: " + username, () -> {
@@ -92,26 +84,17 @@ public class DataBaseSteps {
 
     public static void updateAccountBalance(Long accountId, Double newBalance) {
         StepLogger.log("Update account balance in database for account ID: " + accountId + " to: " + newBalance, () -> {
-            try (Connection connection = DriverManager.getConnection(
-                    Config.getProperty("db.url"),
-                    Config.getProperty("db.username"),
-                    Config.getProperty("db.password"))) {
+            int rowsAffected = DBRequest.builder()
+                    .requestType(DBRequest.RequestType.UPDATE)
+                    .table(Table.ACCOUNTS.getName())
+                    .set("balance", newBalance)
+                    .where(Condition.equalTo("id", accountId))
+                    .execute();
 
-                String sql = "UPDATE accounts SET balance = ? WHERE id = ?";
-                try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                    statement.setDouble(1, newBalance);
-                    statement.setLong(2, accountId);
-                    int rowsAffected = statement.executeUpdate();
-
-                    if (rowsAffected == 0) {
-                        throw new RuntimeException("No account found with ID: " + accountId);
-                    }
-
-                    return rowsAffected;
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Failed to update account balance", e);
+            if (rowsAffected == 0) {
+                throw new RuntimeException("No account found with ID: " + accountId);
             }
+            return rowsAffected;
         });
     }
 }
